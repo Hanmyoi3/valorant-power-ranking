@@ -758,9 +758,9 @@
         async function switchDiscordServer(id){
             activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
             if(!id){applyAppState({});updateAdminUI();return;}
-            const {data,error}=await dbClient.from('discord_servers').select('data').eq('id',id).single();
+            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id});
             if(error){showToast('서버 데이터를 불러오지 못했습니다: '+error.message);return;}
-            applyAppState(data?.data||{});
+            applyAppState(data||{});
             if(activeServerPassword){const v=await dbClient.rpc('verify_server_password',{p_server_id:id,p_password:activeServerPassword});serverAdmin=!!v.data&&!v.error;isAdmin=globalAdmin||serverAdmin;if(!serverAdmin)activeServerPassword='';}
             updateAdminUI();
         }
