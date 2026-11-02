@@ -54,9 +54,11 @@ begin
 end; $$;
 
 
--- Public visitors can read only the JSON data through this function.
--- Direct table access stays revoked so password_hash is never exposed.
-create or replace function public.get_server_state(p_server_id uuid, p_password text)
+-- 공개 열람: 서버 비밀번호 없이 서버 데이터 조회 가능.
+-- 비밀번호 검증은 읽기가 아니라 수정 권한을 얻을 때만 사용한다.
+drop function if exists public.get_server_state(uuid,text);
+drop function if exists public.get_server_state(uuid);
+create or replace function public.get_server_state(p_server_id uuid)
 returns jsonb
 language plpgsql
 security definer
@@ -64,18 +66,12 @@ set search_path = public, extensions
 as $$
 declare result jsonb;
 begin
-  if exists (select 1 from public.admin_users where user_id = auth.uid()) then
-    select data into result from public.discord_servers where id = p_server_id;
-  else
-    select data into result from public.discord_servers where id = p_server_id and password_hash = extensions.crypt(coalesce(p_password,''), password_hash);
-  end if;
-  if result is null then raise exception '서버 비밀번호가 올바르지 않거나 서버가 없습니다.'; end if;
+  select data into result from public.discord_servers where id = p_server_id;
+  if result is null then raise exception '서버를 찾을 수 없습니다.'; end if;
   return result;
 end; $$;
 
-drop function if exists public.get_server_state(uuid);
-grant execute on function public.get_server_state(uuid,text) to anon, authenticated;
-
+grant execute on function public.get_server_state(uuid) to anon, authenticated;
 grant execute on function public.create_discord_server(text,text) to authenticated;
 grant execute on function public.verify_server_password(uuid,text) to anon, authenticated;
 grant execute on function public.save_server_state(uuid,text,jsonb) to anon, authenticated;

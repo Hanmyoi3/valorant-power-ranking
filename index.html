@@ -277,7 +277,7 @@
                 <div class="admin-only bg-valCard border border-gray-800 p-5 rounded-xl shadow-lg lg:col-span-2">
                     <h2 class="text-base font-bold text-white mb-3 flex items-center justify-between">
                         <span class="flex items-center gap-2"><i class="fa-solid fa-user-plus text-valCyan"></i> 선수 신규 등록</span>
-                        <span class="text-xs font-normal text-gray-400">승률 ÷ 2 + 평균 ACS ÷ 10 + 티어 점수</span>
+                        <span class="text-xs font-normal text-gray-400">(티어 점수 + 승률 ÷ 20) × (1 + ACS ÷ 1000)</span>
                     </h2>
                     
                     <form id="add-player-form" onsubmit="handleAddPlayer(event)" class="space-y-3">
@@ -561,13 +561,13 @@
         ].map((name, index) => ({ name, score: index * 2 }));
         const RANK_BUTTON_LIST = VALORANT_RANKS;
 
-        // Total power = win rate / 2 + average ACS / 10 + rank points.
+        // P = (T + W / 20) × (1 + ACS / 1000). T = tier score, W = win rate (%), P = PowerScore.
         function calculatePowerScore(winRate, acs, tier) {
             const rank = RANK_BUTTON_LIST.find(r => r.name === tier);
-            const rankPoints = rank ? rank.score : 0;
-            return (Math.max(0, Math.min(100, Number(winRate) || 0)) / 2)
-                + (Math.max(0, Number(acs) || 0) / 10)
-                + rankPoints;
+            const T = rank ? rank.score : 0;
+            const W = Math.max(0, Math.min(100, Number(winRate) || 0));
+            const ACS = Math.max(0, Number(acs) || 0);
+            return (T + W / 20) * (1 + ACS / 1000);
         }
         function updateAddPowerScore() {
             const score = calculatePowerScore(
@@ -737,7 +737,7 @@
             document.body.classList.toggle('is-admin', isAdmin);
             document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
             document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '전체 관리자 · 모든 서버 접근 가능' : serverAdmin ? '서버 관리자 · 현재 서버만 관리' : '서버 비밀번호 필요') : 'Supabase 설정 필요';
+            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '전체 관리자 · 모든 서버 및 마스터 권한' : serverAdmin ? '서버 관리자 · 현재 서버만 수정 가능' : '공개 열람 · 수정은 서버 비밀번호 필요') : 'Supabase 설정 필요';
             document.getElementById('create-server-btn').classList.toggle('hidden', !globalAdmin);
             document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin);
             document.getElementById('server-password-btn').classList.toggle('hidden', !serverAdmin);
@@ -783,7 +783,7 @@
             if(!grid)return;
             grid.innerHTML=discordServers.length?discordServers.map(x=>`
                 <button onclick="switchDiscordServer('${x.id}')" class="text-left rounded-xl border ${activeServerId===x.id?'border-valRed bg-red-950/30':'border-gray-700 bg-gray-900'} p-4 hover:border-valRed transition">
-                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">${globalAdmin?'전체 관리자 권한으로 접근 가능':'비밀번호로 입장'}</div></div></div>
+                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">${globalAdmin?'전체 관리자 권한으로 접근 가능':'누구나 열람 가능'}</div></div></div>
                     ${globalAdmin?`<div class="flex gap-2 mt-3"><span onclick="event.stopPropagation();switchDiscordServer('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">열기</span><span onclick="event.stopPropagation();renameServerFromCard('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">이름 수정</span><span onclick="event.stopPropagation();deleteDiscordServer('${x.id}')" class="text-xs rounded bg-red-950 px-2 py-1 text-red-300">삭제</span></div>`:''}
                 </button>`).join(''):'<p class="text-gray-500 text-sm">등록된 서버가 없습니다.</p>';
         }
@@ -801,16 +801,14 @@
             if(!id)return;
             const target=discordServers.find(x=>x.id===id);
             if(!target)return;
-            const pw=globalAdmin?'':prompt(`"${target.name}" 서버 입장 비밀번호를 입력하세요.`);
-            if(pw===null)return;
-            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id,p_password:pw});
+            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id});
             if(error||!data){showToast('비밀번호가 틀렸거나 서버 데이터를 불러오지 못했습니다.');return;}
             activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
             applyAppState(data||{});
             document.getElementById('app-main').classList.remove('hidden');
             toggleServerList(false);
             updateAdminUI(); renderServerCards();
-            showToast(globalAdmin?'전체 관리자 권한으로 서버에 입장했습니다.':'서버에 입장했습니다. 이 서버를 관리하려면 서버 관리자 로그인이 필요합니다.');
+            showToast(globalAdmin?'전체 관리자 권한으로 서버에 입장했습니다.':'누구나 열람할 수 있습니다. 수정하려면 서버 관리자 로그인을 해주세요.');
         }
         async function serverAdminLogin(){
             if(!activeServerId){showToast('먼저 서버 목록에서 서버를 선택해 주세요.');return;}
