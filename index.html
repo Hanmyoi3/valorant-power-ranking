@@ -212,6 +212,10 @@
             </div>
             <div class="flex items-center gap-2 ml-auto">
                 <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
+                <select id="server-select" onchange="switchDiscordServer(this.value)" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-2 py-2"><option value="">서버 불러오는 중...</option></select>
+                <button id="create-server-btn" onclick="createDiscordServer()" class="hidden bg-valRed hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">+ 서버 생성</button>
+                <button id="server-login-btn" onclick="serverAdminLogin()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 관리자 로그인</button>
+                <button id="server-password-btn" onclick="changeDiscordServerPassword()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">비밀번호 변경</button>
                 <button id="admin-mode-btn" onclick="openAdminModal()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-lock mr-1"></i> 관리자 모드</button>
                 <button id="admin-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 hover:bg-red-900 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">로그아웃</button>
             </div>
@@ -692,6 +696,7 @@
 
         let teamNames = { A: '팀 1', B: '팀 2' };
         let dbClient = null, isAdmin = false, currentUser = null, cloudReady = false;
+        let globalAdmin = false, serverAdmin = false, activeServerId = '', activeServerPassword = '', discordServers = []; 
         let appState = { players: [], teamNames: {A:'팀 1',B:'팀 2'} };
         const DEFAULT_CATEGORIES = ['IGL','FLEX','타격대','척후대','감시자','전략가','오퍼레이터'];
         let categoryOptions = [...DEFAULT_CATEGORIES];
@@ -707,7 +712,10 @@
             document.body.classList.toggle('is-admin', isAdmin);
             document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
             document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('cloud-status').textContent = cloudReady ? (isAdmin ? '관리자 접속됨 · 온라인 저장' : '공개 열람 · 온라인 데이터') : 'Supabase 설정 필요';
+            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '사이트 관리자' : serverAdmin ? '서버 관리자 · 온라인 저장' : '공개 열람 · 온라인 데이터') : 'Supabase 설정 필요';
+            document.getElementById('create-server-btn').classList.toggle('hidden', !globalAdmin);
+            document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin || globalAdmin);
+            document.getElementById('server-password-btn').classList.toggle('hidden', !serverAdmin);
             document.querySelectorAll('#team-a-name,#team-b-name').forEach(el => el.readOnly = !isAdmin);
             renderAll();
         }
@@ -729,17 +737,54 @@
             if(!dbClient)return; const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
             if(!user){isAdmin=false;updateAdminUI();return;}
             const {data,error}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
-            isAdmin=!!data&&!error; updateAdminUI();
+            globalAdmin=!!data&&!error; isAdmin=globalAdmin||serverAdmin; updateAdminUI();
         }
         async function initCloud(){
             const url=window.SUPABASE_URL, key=window.SUPABASE_ANON_KEY;
             if(!url||!key||url.includes('YOUR_')||key.includes('YOUR_')){cloudReady=false;updateAdminUI();showToast('Supabase 설정 파일을 먼저 작성해야 합니다.');return;}
             dbClient=window.supabase.createClient(url,key); cloudReady=true;
             await refreshAdminStatus();
-            const {data,error}=await dbClient.from('app_state').select('data').eq('id',1).single();
-            if(error){console.error(error);showToast('온라인 데이터를 읽지 못했습니다. Supabase SQL 설정을 확인해 주세요.');}
-            else applyAppState(data?.data||{});
+            await loadDiscordServers();
+        }
+        async function loadDiscordServers(preferredId=''){
+            const {data,error}=await dbClient.from('discord_server_list').select('id,name').order('created_at');
+            if(error){console.error(error);showToast('서버 목록을 불러오지 못했습니다. Supabase에서 server-multi-tenant.sql을 실행했는지 확인해 주세요.');return;}
+            discordServers=data||[];
+            const sel=document.getElementById('server-select');
+            sel.innerHTML=discordServers.length?discordServers.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join(''):'<option value="">등록된 서버 없음</option>';
+            const target=preferredId||activeServerId||discordServers[0]?.id||'';
+            if(target){sel.value=target;await switchDiscordServer(target);}else{activeServerId='';applyAppState({});updateAdminUI();}
+        }
+        async function switchDiscordServer(id){
+            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
+            if(!id){applyAppState({});updateAdminUI();return;}
+            const {data,error}=await dbClient.from('discord_servers').select('data').eq('id',id).single();
+            if(error){showToast('서버 데이터를 불러오지 못했습니다: '+error.message);return;}
+            applyAppState(data?.data||{});
+            if(activeServerPassword){const v=await dbClient.rpc('verify_server_password',{p_server_id:id,p_password:activeServerPassword});serverAdmin=!!v.data&&!v.error;isAdmin=globalAdmin||serverAdmin;if(!serverAdmin)activeServerPassword='';}
             updateAdminUI();
+        }
+        async function serverAdminLogin(){
+            if(!activeServerId){showToast('먼저 서버를 선택해 주세요.');return;}
+            const pw=prompt('선택한 서버의 관리자 비밀번호를 입력하세요.');if(!pw)return;
+            const {data,error}=await dbClient.rpc('verify_server_password',{p_server_id:activeServerId,p_password:pw});
+            if(error||!data){showToast('서버 비밀번호가 올바르지 않습니다.');return;}
+            activeServerPassword=pw;serverAdmin=true;isAdmin=true;updateAdminUI();showToast('서버 관리자 로그인 성공');
+        }
+        async function createDiscordServer(){
+            if(!globalAdmin){showToast('사이트 관리자만 서버를 생성할 수 있습니다.');return;}
+            const name=prompt('새 디스코드 서버 이름을 입력하세요.');if(!name)return;
+            const pw=prompt('이 서버의 관리자 비밀번호를 설정하세요. (8자 이상)');if(!pw)return;
+            const {data,error}=await dbClient.rpc('create_discord_server',{p_name:name,p_password:pw});
+            if(error){showToast('서버 생성 실패: '+error.message);return;}
+            showToast('새 서버가 생성되었습니다.');await loadDiscordServers(data);
+        }
+        async function changeDiscordServerPassword(){
+            if(!serverAdmin||!activeServerId)return;
+            const oldPw=activeServerPassword;const next=prompt('새 서버 비밀번호를 입력하세요. (8자 이상)');if(!next)return;
+            const {error}=await dbClient.rpc('change_server_password',{p_server_id:activeServerId,p_old_password:oldPw,p_new_password:next});
+            if(error){showToast('비밀번호 변경 실패: '+error.message);return;}
+            activeServerPassword=next;showToast('서버 비밀번호가 변경되었습니다.');
         }
         function applyAppState(data){
             players=Array.isArray(data.players)?data.players:[];
@@ -750,9 +795,14 @@
         }
         function collectAppState(){return {players,teamNames,categoryOptions,updatedAt:new Date().toISOString()};}
         async function persistState(){
-            if(!dbClient||!isAdmin)return;
-            const {error}=await dbClient.from('app_state').upsert({id:1,data:collectAppState(),updated_at:new Date().toISOString()});
-            if(error){console.error(error);showToast('저장 실패: '+error.message);} 
+            if(!dbClient||!isAdmin||!activeServerId)return;
+            if(globalAdmin){
+                const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:'',p_data:collectAppState()});
+                if(error){console.error(error);showToast('저장 실패: '+error.message);}
+                return;
+            }
+            const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:activeServerPassword,p_data:collectAppState()});
+            if(error){console.error(error);showToast('저장 실패: '+error.message);}
         }
         function saveData(){ persistState(); }
         function populateCategorySelects(){ ['input-categories','edit-categories'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const selected=[...el.selectedOptions].map(o=>o.value);el.innerHTML=categoryOptions.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');[...el.options].forEach(o=>o.selected=selected.includes(o.value));}); }
