@@ -306,7 +306,7 @@
 
                         <!-- Rank Selector Buttons Grid -->
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">티어 선택 (아이언 1: 0점, 티어 단계마다 +2점)</label>
+                            <label class="block text-xs text-gray-400 mb-1">티어 선택 (아이언 1: 100점 ~ 레디언트: 460점)</label>
                             <div id="rank-buttons-container" class="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-12 gap-1.5 bg-gray-950 p-2 rounded border border-gray-800 max-h-40 overflow-y-auto">
                                 <!-- Rank Buttons generated via JS -->
                             </div>
@@ -552,13 +552,19 @@
     <script src="./supabase-config.js"></script>
     <!-- JavaScript Logic -->
     <script>
-        // Rank score: Iron 1 = 0, each competitive rank step adds 2 points.
+        // Rank scores are configured explicitly according to the PB팀메이커 tier scale.
         const VALORANT_RANKS = [
             '아이언 1','아이언 2','아이언 3','브론즈 1','브론즈 2','브론즈 3',
             '실버 1','실버 2','실버 3','골드 1','골드 2','골드 3',
             '플래티넘 1','플래티넘 2','플래티넘 3','다이아몬드 1','다이아몬드 2','다이아몬드 3',
             '초월자 1','초월자 2','초월자 3','불멸 1','불멸 2','불멸 3','레디언트'
-        ].map((name, index) => ({ name, score: index * 2 }));
+        ];
+        const RANK_SCORES = [
+            100, 103, 106, 110, 116, 122, 130, 139, 149,
+            160, 173, 186, 200, 216, 232, 250, 269, 289,
+            310, 333, 356, 380, 406, 432, 460
+        ];
+        VALORANT_RANKS.forEach((name, index) => { VALORANT_RANKS[index] = { name, score: RANK_SCORES[index] }; });
         const RANK_BUTTON_LIST = VALORANT_RANKS;
 
         // P = (T + W / 20) × (1 + ACS / 1000). T = tier score, W = win rate (%), P = PowerScore.
