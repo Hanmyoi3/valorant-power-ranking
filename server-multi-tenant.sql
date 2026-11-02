@@ -10,7 +10,6 @@ create table if not exists public.discord_servers (
 );
 alter table public.discord_servers enable row level security;
 drop policy if exists "Public can list discord servers" on public.discord_servers;
-create policy "Public can list discord servers" on public.discord_servers for select using (true);
 revoke all on public.discord_servers from anon, authenticated;
 create or replace view public.discord_server_list as
   select id, name, created_at from public.discord_servers;
@@ -37,9 +36,8 @@ $$;
 create or replace function public.save_server_state(p_server_id uuid, p_password text, p_data jsonb)
 returns void language plpgsql security definer set search_path = public, extensions, auth as $$
 begin
-  if not exists(select 1 from public.discord_servers where id=p_server_id and password_hash=extensions.crypt(p_password,password_hash))
-     and not exists(select 1 from public.admin_users where user_id=auth.uid()) then
-    raise exception '해당 서버의 관리자 비밀번호가 올바르지 않습니다.';
+  if not exists(select 1 from public.discord_servers where id=p_server_id and password_hash=extensions.crypt(p_password,password_hash)) then
+    raise exception '해당 서버의 비밀번호가 올바르지 않습니다.';
   end if;
   update public.discord_servers set data=p_data, updated_at=now() where id=p_server_id;
   if not found then raise exception '서버를 찾을 수 없습니다.'; end if;
@@ -57,16 +55,26 @@ end; $$;
 
 -- Public visitors can read only the JSON data through this function.
 -- Direct table access stays revoked so password_hash is never exposed.
-create or replace function public.get_server_state(p_server_id uuid)
+create or replace function public.get_server_state(p_server_id uuid, p_password text)
 returns jsonb
-language sql
+language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
-  select data from public.discord_servers where id = p_server_id;
-$$;
+declare result jsonb;
+begin
+  select data into result
+  from public.discord_servers
+  where id = p_server_id
+    and password_hash = extensions.crypt(p_password, password_hash);
+  if result is null then
+    raise exception '서버 비밀번호가 올바르지 않습니다.';
+  end if;
+  return result;
+end; $$;
 
-grant execute on function public.get_server_state(uuid) to anon, authenticated;
+drop function if exists public.get_server_state(uuid);
+grant execute on function public.get_server_state(uuid,text) to anon, authenticated;
 
 grant execute on function public.create_discord_server(text,text) to authenticated;
 grant execute on function public.verify_server_password(uuid,text) to anon, authenticated;

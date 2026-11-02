@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>발로란트 내전 파워랭킹 & 팀 배정기</title>
+    <title>WTM · Well-balanced Team Maker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (xlsx) for Excel processing -->
@@ -171,7 +171,7 @@
         #team-a-players > div:hover { border-color: rgba(255,103,112,.6) !important; }
         #team-b-players > div:hover { border-color: rgba(83,177,210,.6) !important; }
         #team-a-name, #team-b-name { font-family: 'Noto Sans KR', sans-serif !important; font-size: 20px !important; font-weight: 800 !important; }
-        #rank-buttons-container, #edit-rank-buttons-container, #edit-agent-picker {
+        #rank-buttons-container, #edit-rank-buttons-container, #edit-agent-picker, #add-agent-picker {
             background: rgba(6,11,17,.62) !important;
             border-color: var(--vr-line) !important;
             border-radius: 10px !important;
@@ -205,14 +205,14 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                        발로란트 내전 파워랭킹 & 팀 배정기
+                        WTM · Well-balanced Team Maker
                     </h1>
-                    <p class="text-xs text-gray-400">종합 파워점수 기반 · 5v5 자동 균형 팀 배정</p>
+                    <p class="text-xs text-gray-400">VALORANT CUSTOM GAME · BALANCED TEAM MAKER</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 ml-auto">
                 <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
-                <select id="server-select" onchange="switchDiscordServer(this.value)" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-2 py-2"><option value="">서버 불러오는 중...</option></select>
+                <button id="server-list-toggle" onclick="toggleServerList()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2">서버 목록 보기</button>
                 <button id="create-server-btn" onclick="createDiscordServer()" class="hidden bg-valRed hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">+ 서버 생성</button>
                 <button id="server-login-btn" onclick="serverAdminLogin()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 관리자 로그인</button>
                 <button id="server-password-btn" onclick="changeDiscordServerPassword()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">비밀번호 변경</button>
@@ -234,8 +234,13 @@
         </div>
     </header>
 
+    <section id="server-list-panel" class="hidden max-w-7xl mx-auto px-4 pt-5 w-full">
+        <div class="flex items-center justify-between mb-3"><h2 class="text-white font-black">Discord 서버 선택</h2><button onclick="toggleServerList(false)" class="text-gray-400 text-xs">닫기 ✕</button></div>
+        <div id="server-card-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </section>
+
     <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+    <main id="app-main" class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
 
         <!-- TAB 1: ROSTER & EXCEL MANAGEMENT -->
         <section id="sec-roster" class="space-y-6">
@@ -308,11 +313,12 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                             <div class="sm:col-span-2">
-                                <label class="block text-xs text-gray-400 mb-1">주챔 1, 2, 3 (쉼표 구분)</label>
-                                <input type="text" id="input-agents" placeholder="소바, 페이드, 오멘" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-valRed">
+                                <label class="block text-xs text-gray-400 mb-1">주챔 선택 (최대 3명 · 요원 초상화를 눌러 선택)</label>
+                                <div id="add-agent-picker" class="grid grid-cols-4 sm:grid-cols-6 gap-2 bg-gray-950 border border-gray-800 rounded p-2 max-h-52 overflow-y-auto"><span class="text-xs text-gray-500">요원 목록 불러오는 중...</span></div>
+                                <input type="hidden" id="input-agents">
                                 <label class="block text-xs text-gray-400 mt-2 mb-1">인물 카테고리 (복수 선택 가능)</label>
                                 <select id="input-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
-                                <div class="flex gap-1 mt-1"><input id="custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('input-categories','custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button></div>
+                                <div class="flex gap-1 mt-1"><input id="custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('input-categories','custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button><button type="button" onclick="deleteSelectedCategory('input-categories')" class="bg-red-900 px-2 rounded text-[11px]">선택 삭제</button></div>
                             </div>
                             <button type="submit" class="bg-valRed hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-plus"></i> 선수 등록
@@ -520,7 +526,7 @@
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">인물 카테고리 (복수 선택 가능)</label>
                     <select id="edit-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
-                    <div class="flex gap-1 mt-1"><input id="edit-custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('edit-categories','edit-custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button></div>
+                    <div class="flex gap-1 mt-1"><input id="edit-custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('edit-categories','edit-custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button><button type="button" onclick="deleteSelectedCategory('edit-categories')" class="bg-red-900 px-2 rounded text-[11px]">선택 삭제</button></div>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
@@ -533,7 +539,7 @@
 
     <!-- Footer -->
     <footer class="border-t border-gray-800 bg-gray-950 py-4 text-center text-xs text-gray-500">
-        발로란트 커스텀 내전 파워랭킹 &copy; 2026. 데이터는 온라인 데이터베이스에 저장됩니다.
+        WTM · Well-balanced Team Maker <span class="mx-2">|</span> Made by 한묘 <span class="inline-flex items-center gap-1 ml-1"><i class="fa-brands fa-discord"></i> han_myo</span>
     </footer>
 
     <!-- Notification Toast -->
@@ -607,6 +613,7 @@
         let VAL_AGENTS = [];
         let RANK_IMAGES = {};
         let selectedEditAgents = [];
+        let selectedAddAgents = [];
         const AGENT_API = 'https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=ko-KR';
         const RANK_ICON_BASE = 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04';
         const AGENT_ALIASES = {
@@ -640,11 +647,14 @@
                     .map(a => ({name:a.displayName, image:a.displayIconSmall || a.displayIcon, uuid:a.uuid}));
                 players = players.map(p => ({...p, agents: cleanAgentList(p.agents)}));
                 saveData();
+                renderAddAgentPicker();
                 renderEditAgentPicker();
                 renderAll();
             } catch (e) {
-                const el = document.getElementById('edit-agent-picker');
-                if (el) el.innerHTML = '<span class="text-xs text-gray-500">요원 이미지를 불러오지 못했습니다. 네트워크 연결 후 새로고침해 주세요.</span>';
+                ['add-agent-picker','edit-agent-picker'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = '<span class="text-xs text-gray-500">요원 이미지를 불러오지 못했습니다. 네트워크 연결 후 새로고침해 주세요.</span>';
+                });
             }
         }
         function loadRankAssets() {
@@ -662,13 +672,27 @@
             const a = VAL_AGENTS.find(x => x.name.toLowerCase() === canonical.toLowerCase());
             return a ? a.image : '';
         }
+        function renderAddAgentPicker() {
+            const el = document.getElementById('add-agent-picker');
+            if (!el || !VAL_AGENTS.length) return;
+            selectedAddAgents = cleanAgentList(selectedAddAgents);
+            el.innerHTML = VAL_AGENTS.map(a => `<button type="button" class="agent-choice ${selectedAddAgents.includes(a.name)?'selected':''}" onclick="toggleAddAgent('${a.name.replace(/'/g, "\\'")}')"><img src="${a.image}" alt="${escapeHtml(a.name)}"><span>${escapeHtml(a.name)}</span></button>`).join('');
+            document.getElementById('input-agents').value = selectedAddAgents.join(', ');
+        }
+        function toggleAddAgent(name) {
+            name = canonicalAgentName(name);
+            if (!name) return;
+            if (selectedAddAgents.includes(name)) selectedAddAgents = selectedAddAgents.filter(x => x !== name);
+            else if (selectedAddAgents.length < 3) selectedAddAgents.push(name);
+            else showToast('주챔은 최대 3명까지 선택할 수 있습니다.');
+            renderAddAgentPicker();
+        }
         function renderEditAgentPicker() {
             const el = document.getElementById('edit-agent-picker');
             if (!el || !VAL_AGENTS.length) return;
             selectedEditAgents = cleanAgentList(selectedEditAgents);
             el.innerHTML = VAL_AGENTS.map(a => `<button type="button" class="agent-choice ${selectedEditAgents.includes(a.name)?'selected':''}" onclick="toggleEditAgent('${a.name.replace(/'/g, "\\'")}')"><img src="${a.image}" alt=""><span>${escapeHtml(a.name)}</span></button>`).join('');
             document.getElementById('edit-agents').value = selectedEditAgents.join(', ');
-            setSelectedCategories('edit-categories', player.categories || []);
         }
         function toggleEditAgent(name) {
             name = canonicalAgentName(name);
@@ -712,9 +736,9 @@
             document.body.classList.toggle('is-admin', isAdmin);
             document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
             document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '사이트 관리자' : serverAdmin ? '서버 관리자 · 온라인 저장' : '공개 열람 · 온라인 데이터') : 'Supabase 설정 필요';
+            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '사이트 관리자' : serverAdmin ? '서버 관리자 · 온라인 저장' : '서버 비밀번호 필요') : 'Supabase 설정 필요';
             document.getElementById('create-server-btn').classList.toggle('hidden', !globalAdmin);
-            document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin || globalAdmin);
+            document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin);
             document.getElementById('server-password-btn').classList.toggle('hidden', !serverAdmin);
             document.querySelectorAll('#team-a-name,#team-b-name').forEach(el => el.readOnly = !isAdmin);
             renderAll();
@@ -735,9 +759,9 @@
         async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); isAdmin=false;currentUser=null;updateAdminUI();showToast('로그아웃했습니다.'); }
         async function refreshAdminStatus(){
             if(!dbClient)return; const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
-            if(!user){isAdmin=false;updateAdminUI();return;}
+            if(!user){globalAdmin=false;isAdmin=serverAdmin;updateAdminUI();return;}
             const {data,error}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
-            globalAdmin=!!data&&!error; isAdmin=globalAdmin||serverAdmin; updateAdminUI();
+            globalAdmin=!!data&&!error; isAdmin=serverAdmin; updateAdminUI();
         }
         async function initCloud(){
             const url=window.SUPABASE_URL, key=window.SUPABASE_ANON_KEY;
@@ -746,27 +770,48 @@
             await refreshAdminStatus();
             await loadDiscordServers();
         }
+        function toggleServerList(force){
+            const panel=document.getElementById('server-list-panel');
+            const show=force===undefined?panel.classList.contains('hidden'):!!force;
+            panel.classList.toggle('hidden',!show);
+            if(show) renderServerCards();
+        }
+        function renderServerCards(){
+            const grid=document.getElementById('server-card-grid');
+            if(!grid)return;
+            grid.innerHTML=discordServers.length?discordServers.map(x=>`
+                <button onclick="switchDiscordServer('${x.id}')" class="text-left rounded-xl border ${activeServerId===x.id?'border-valRed bg-red-950/30':'border-gray-700 bg-gray-900'} p-4 hover:border-valRed transition">
+                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">비밀번호로 입장</div></div></div>
+                </button>`).join(''):'<p class="text-gray-500 text-sm">등록된 서버가 없습니다.</p>';
+        }
         async function loadDiscordServers(preferredId=''){
             const {data,error}=await dbClient.from('discord_server_list').select('id,name').order('created_at');
-            if(error){console.error(error);showToast('서버 목록을 불러오지 못했습니다. Supabase에서 server-multi-tenant.sql을 실행했는지 확인해 주세요.');return;}
+            if(error){console.error(error);showToast('서버 목록을 불러오지 못했습니다.');return;}
             discordServers=data||[];
-            const sel=document.getElementById('server-select');
-            sel.innerHTML=discordServers.length?discordServers.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join(''):'<option value="">등록된 서버 없음</option>';
-            const target=preferredId||activeServerId||discordServers[0]?.id||'';
-            if(target){sel.value=target;await switchDiscordServer(target);}else{activeServerId='';applyAppState({});updateAdminUI();}
-        }
-        async function switchDiscordServer(id){
-            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
-            if(!id){applyAppState({});updateAdminUI();return;}
-            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id});
-            if(error){showToast('서버 데이터를 불러오지 못했습니다: '+error.message);return;}
-            applyAppState(data||{});
-            if(activeServerPassword){const v=await dbClient.rpc('verify_server_password',{p_server_id:id,p_password:activeServerPassword});serverAdmin=!!v.data&&!v.error;isAdmin=globalAdmin||serverAdmin;if(!serverAdmin)activeServerPassword='';}
+            renderServerCards();
+            const target=preferredId||activeServerId;
+            if(target && discordServers.some(x=>x.id===target)) { activeServerId=target; }
+            else { activeServerId=''; applyAppState({}); isAdmin=false; document.getElementById('app-main').classList.add('hidden'); toggleServerList(true); }
             updateAdminUI();
         }
+        async function switchDiscordServer(id){
+            if(!id)return;
+            const target=discordServers.find(x=>x.id===id);
+            if(!target)return;
+            const pw=prompt(`"${target.name}" 서버 입장 비밀번호를 입력하세요.`);
+            if(pw===null)return;
+            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id,p_password:pw});
+            if(error||!data){showToast('비밀번호가 틀렸거나 서버 데이터를 불러오지 못했습니다.');return;}
+            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=false;
+            applyAppState(data||{});
+            document.getElementById('app-main').classList.remove('hidden');
+            toggleServerList(false);
+            updateAdminUI(); renderServerCards();
+            showToast('서버에 입장했습니다. 관리자라면 관리자 로그인을 추가로 진행해 주세요.');
+        }
         async function serverAdminLogin(){
-            if(!activeServerId){showToast('먼저 서버를 선택해 주세요.');return;}
-            const pw=prompt('선택한 서버의 관리자 비밀번호를 입력하세요.');if(!pw)return;
+            if(!activeServerId){showToast('먼저 서버 목록에서 서버를 선택해 주세요.');return;}
+            const pw=prompt('이 서버의 관리자 비밀번호를 입력하세요.');if(!pw)return;
             const {data,error}=await dbClient.rpc('verify_server_password',{p_server_id:activeServerId,p_password:pw});
             if(error||!data){showToast('서버 비밀번호가 올바르지 않습니다.');return;}
             activeServerPassword=pw;serverAdmin=true;isAdmin=true;updateAdminUI();showToast('서버 관리자 로그인 성공');
@@ -796,11 +841,6 @@
         function collectAppState(){return {players,teamNames,categoryOptions,updatedAt:new Date().toISOString()};}
         async function persistState(){
             if(!dbClient||!isAdmin||!activeServerId)return;
-            if(globalAdmin){
-                const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:'',p_data:collectAppState()});
-                if(error){console.error(error);showToast('저장 실패: '+error.message);}
-                return;
-            }
             const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:activeServerPassword,p_data:collectAppState()});
             if(error){console.error(error);showToast('저장 실패: '+error.message);}
         }
@@ -808,6 +848,16 @@
         function populateCategorySelects(){ ['input-categories','edit-categories'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const selected=[...el.selectedOptions].map(o=>o.value);el.innerHTML=categoryOptions.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');[...el.options].forEach(o=>o.selected=selected.includes(o.value));}); }
         function getSelectedCategories(id){const el=document.getElementById(id);return el?[...el.selectedOptions].map(o=>o.value):[];}
         function setSelectedCategories(id,values){const el=document.getElementById(id);if(!el)return;[...el.options].forEach(o=>o.selected=(values||[]).includes(o.value));}
+        function deleteSelectedCategory(selectId){
+            if(!isAdmin){showToast('서버 관리자 로그인 후 이용할 수 있습니다.');return;}
+            const el=document.getElementById(selectId);
+            const chosen=[...el.selectedOptions].map(o=>o.value).filter(c=>!DEFAULT_CATEGORIES.includes(c));
+            if(!chosen.length){showToast('삭제할 사용자 지정 카테고리를 선택해 주세요.');return;}
+            if(!confirm(`선택한 카테고리(${chosen.join(', ')})를 삭제할까요? 선수에게 지정된 카테고리에서도 제거됩니다.`))return;
+            categoryOptions=categoryOptions.filter(c=>!chosen.includes(c));
+            players=players.map(p=>({...p,categories:(p.categories||[]).filter(c=>!chosen.includes(c))}));
+            populateCategorySelects();persistState();renderAll();showToast('카테고리를 삭제했습니다.');
+        }
         function addCustomCategory(selectId,inputId){const input=document.getElementById(inputId),name=input.value.trim();if(!name)return;if(!categoryOptions.includes(name))categoryOptions.push(name);populateCategorySelects();const sel=document.getElementById(selectId);[...sel.options].forEach(o=>{if(o.value===name)o.selected=true;});input.value='';if(isAdmin)persistState();}
         window.onload = async function() {
             renderRankButtons(); loadRankAssets(); await initCloud();
@@ -1000,8 +1050,7 @@
             const winRate = Math.max(0, Math.min(100, parseFloat(document.getElementById('input-winrate').value) || 0));
             const avgAcs = Math.max(0, parseFloat(document.getElementById('input-acs').value) || 0);
             const powerScore = calculatePowerScore(winRate, avgAcs, tier);
-            const rawAgents = document.getElementById('input-agents').value;
-            const agents = cleanAgentList(rawAgents);
+            const agents = [...selectedAddAgents];
             const categories = getSelectedCategories('input-categories');
 
             if (!tier) {
@@ -1018,6 +1067,8 @@
             renderAll();
             showToast(`'${name}' 선수가 등록되었습니다.`);
             document.getElementById('input-name').value = '';
+            selectedAddAgents = [];
+            renderAddAgentPicker();
             setSelectedCategories('input-categories', []);
             document.getElementById('input-winrate').value = '50';
             document.getElementById('input-acs').value = '100';
