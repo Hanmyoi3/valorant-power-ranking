@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>발로란트 내전 파워랭킹 & 팀 배정기</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (xlsx) for Excel processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        valRed: '#FF4655',
+                        valDark: '#0F1923',
+                        valCard: '#1A242D',
+                        valCyan: '#00F0FF',
+                        valGold: '#ECE8E1',
+                    },
+                    fontFamily: {
+                        teko: ['Teko', 'sans-serif'],
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1923;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ff4655;
+            border-radius: 3px;
+        }
+        .val-clip-btn {
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+        /* Agent Tag Colors based on Valorant Roles */
+        .agent-initiator { background-color: #facc15; color: #000; }
+        .agent-controller { background-color: #0284c7; color: #fff; }
+        .agent-duelist { background-color: #ea580c; color: #fff; }
+        .agent-sentinel { background-color: #16a34a; color: #fff; }
+        .agent-flex { background-color: #7e22ce; color: #fff; }
+        .agent-default { background-color: #374151; color: #d1d5db; }
+        
+        .rank-btn { transition: all 0.15s ease-in-out; }
+        .rank-btn.active { border-color: #FF4655; background-color: rgba(255, 70, 85, 0.2); color: #fff; }
+    
+        .agent-portrait { width: 28px; height: 28px; object-fit: contain; vertical-align: middle; display:inline-block; }
+        .agent-choice { border:1px solid #374151; border-radius:8px; padding:6px 3px; background:#111827; color:#d1d5db; font-size:10px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+        .agent-choice.selected { border-color:#22d3ee; background:rgba(34,211,238,.15); color:white; }
+        .agent-choice img { width:42px; height:42px; object-fit:contain; }
+        .rank-icon { width:22px; height:22px; object-fit:contain; vertical-align:middle; margin-right:4px; }
+        body:not(.is-admin) .admin-only { display:none !important; }
+        body:not(.is-admin) #team-a-name, body:not(.is-admin) #team-b-name { pointer-events:none; border-color:transparent; }
+        body:not(.is-admin) .admin-action { display:none !important; }
+    </style>
+
+    <style id="valorant-clean-refresh">
+        :root {
+            color-scheme: dark;
+            --vr-red: #ff4655;
+            --vr-bg: #0b1017;
+            --vr-panel: #121b25;
+            --vr-panel-soft: #17222e;
+            --vr-line: rgba(176, 190, 204, .13);
+            --vr-muted: #91a0af;
+        }
+        html { scroll-behavior: smooth; background: var(--vr-bg); }
+        body {
+            background:
+              radial-gradient(ellipse at 85% 0%, rgba(255,70,85,.085), transparent 34rem),
+              radial-gradient(ellipse at 0% 48%, rgba(52,91,120,.10), transparent 38rem),
+              var(--vr-bg) !important;
+            color: #e8edf2 !important;
+            letter-spacing: -.012em;
+        }
+        body::before {
+            content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+            opacity: .16;
+            background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+            background-size: 36px 36px;
+            mask-image: linear-gradient(to bottom, black, transparent 78%);
+        }
+        ::-webkit-scrollbar-thumb { background: #4b5865; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--vr-red); }
+        header {
+            background: rgba(9,14,20,.88) !important;
+            border-color: var(--vr-line) !important;
+            box-shadow: 0 10px 35px rgba(0,0,0,.18);
+        }
+        header > div { max-width: 1440px !important; padding-top: 14px !important; padding-bottom: 14px !important; }
+        header h1 { letter-spacing: -.035em !important; font-size: clamp(15px, 1.25vw, 19px) !important; }
+        header nav {
+            background: rgba(255,255,255,.035) !important;
+            border: 1px solid var(--vr-line) !important;
+            border-radius: 11px !important;
+            padding: 4px !important;
+        }
+        header nav button { border-radius: 8px !important; padding: 9px 13px !important; font-size: 12px !important; }
+        header nav button.bg-valRed { background: var(--vr-red) !important; box-shadow: 0 3px 12px rgba(255,70,85,.18); }
+        #admin-mode-btn, #admin-logout-btn { border-radius: 9px !important; padding: 9px 13px !important; }
+        main { max-width: 1440px !important; padding-top: 30px !important; padding-bottom: 44px !important; }
+        .bg-valCard {
+            background: linear-gradient(145deg, rgba(23,34,46,.96), rgba(17,26,36,.98)) !important;
+            border-color: var(--vr-line) !important;
+            box-shadow: 0 12px 32px rgba(0,0,0,.16) !important;
+        }
+        .rounded-xl { border-radius: 14px !important; }
+        .rounded-lg { border-radius: 10px !important; }
+        h2, h3 { letter-spacing: -.025em; }
+        p.text-gray-400, label.text-gray-400, span.text-gray-400 { color: #9aa8b6 !important; }
+        input:not([type="checkbox"]):not([type="file"]), select, textarea {
+            background-color: rgba(5,10,16,.62) !important;
+            border-color: rgba(165,180,195,.18) !important;
+            border-radius: 9px !important;
+            min-height: 36px;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: rgba(255,70,85,.78) !important;
+            box-shadow: 0 0 0 3px rgba(255,70,85,.10) !important;
+            outline: none !important;
+        }
+        button { transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease; }
+        button:active { transform: translateY(1px); }
+        button.bg-valRed, button[type="submit"].bg-valRed, .bg-valRed:not(nav button) {
+            box-shadow: 0 5px 14px rgba(255,70,85,.12);
+        }
+        button.bg-valRed:hover { background: #f33143 !important; box-shadow: 0 7px 18px rgba(255,70,85,.2); }
+        table { border-collapse: separate !important; border-spacing: 0; }
+        thead.bg-gray-950 { background: #0e151e !important; }
+        tbody.bg-gray-900\/40 { background: rgba(9,15,22,.35) !important; }
+        tbody tr { transition: background .16s ease; }
+        tbody tr:hover { background: rgba(255,255,255,.035) !important; }
+        tbody td { border-color: rgba(176,190,204,.09) !important; }
+        #leaderboard-grid > div {
+            background: linear-gradient(145deg, rgba(12,19,27,.98), rgba(20,30,41,.96)) !important;
+            border-color: rgba(176,190,204,.14) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 8px 22px rgba(0,0,0,.17);
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        #leaderboard-grid > div:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,.26); }
+        #leaderboard-grid > div:first-child { background: linear-gradient(145deg, rgba(47,39,23,.62), rgba(18,25,33,.98)) !important; border-color: rgba(224,181,83,.48) !important; }
+        #leaderboard-grid > div:nth-child(2) { border-color: rgba(183,198,211,.35) !important; }
+        #leaderboard-grid > div:nth-child(3) { border-color: rgba(184,111,67,.38) !important; }
+        #leaderboard-grid > div > div:first-child { gap: 12px; }
+        #leaderboard-grid > div span[class*="bg-yellow-400"] { background: #d6ad56 !important; color: #17130b !important; }
+        #leaderboard-grid > div span[class*="bg-slate-300"] { background: #aebbc8 !important; color: #101820 !important; }
+        #leaderboard-grid > div span[class*="bg-amber-700"] { background: #a96843 !important; }
+        #leaderboard-grid > div span.rounded-md { border-radius: 7px !important; letter-spacing: .025em; }
+        #team-a-players > div, #team-b-players > div {
+            background: rgba(7,13,19,.55) !important;
+            border-color: rgba(176,190,204,.13) !important;
+            border-radius: 10px !important;
+            padding: 12px !important;
+        }
+        #team-a-players > div:hover { border-color: rgba(255,103,112,.6) !important; }
+        #team-b-players > div:hover { border-color: rgba(83,177,210,.6) !important; }
+        #team-a-name, #team-b-name { font-family: 'Noto Sans KR', sans-serif !important; font-size: 20px !important; font-weight: 800 !important; }
+        #rank-buttons-container, #edit-rank-buttons-container, #edit-agent-picker {
+            background: rgba(6,11,17,.62) !important;
+            border-color: var(--vr-line) !important;
+            border-radius: 10px !important;
+        }
+        .rank-btn { border-radius: 7px !important; }
+        .agent-choice { border-color: rgba(176,190,204,.16) !important; background: #111b26 !important; border-radius: 9px !important; }
+        .agent-choice.selected { border-color: var(--vr-red) !important; background: rgba(255,70,85,.12) !important; }
+        #admin-modal > div, #edit-modal > div { border-color: rgba(176,190,204,.18) !important; box-shadow: 0 24px 80px rgba(0,0,0,.55) !important; }
+        footer { background: rgba(7,11,16,.72) !important; border-color: var(--vr-line) !important; }
+        .val-clip-btn { clip-path: none !important; border-radius: 9px !important; }
+        @media (max-width: 760px) {
+            header > div { align-items: flex-start !important; }
+            header nav { width: 100%; display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)); }
+            header nav button { justify-content: center; padding: 9px 5px !important; font-size: 11px !important; white-space: nowrap; }
+            main { padding: 18px 14px 32px !important; }
+            #leaderboard-grid { gap: 11px !important; }
+            #leaderboard-grid > div { min-height: 128px !important; }
+            #leaderboard-grid > div:first-child { min-height: 164px !important; }
+        }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+    </style>
+</head>
+<body class="bg-valDark text-valGold min-h-screen font-sans flex flex-col justify-between selection:bg-valRed selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-950/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-valRed text-white px-2.5 py-1 rounded text-xl font-bold font-teko tracking-wider leading-none">
+                    VAL
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
+                        발로란트 내전 파워랭킹 & 팀 배정기
+                    </h1>
+                    <p class="text-xs text-gray-400">종합 파워점수 기반 · 5v5 자동 균형 팀 배정</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 ml-auto">
+                <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
+                <button id="admin-mode-btn" onclick="openAdminModal()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-lock mr-1"></i> 관리자 모드</button>
+                <button id="admin-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 hover:bg-red-900 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">로그아웃</button>
+            </div>
+            <!-- Navigation Tabs -->
+            <nav class="flex gap-2 bg-gray-900 p-1 rounded-lg border border-gray-800 text-sm">
+                <button onclick="switchTab('roster')" id="tab-roster" class="tab-btn px-4 py-1.5 rounded-md font-bold transition flex items-center gap-2 bg-valRed text-white">
+                    <i class="fa-solid fa-users"></i> 선수 명단 & 엑셀
+                </button>
+                <button onclick="switchTab('matchmaking')" id="tab-matchmaking" class="tab-btn px-4 py-1.5 rounded-md font-bold transition flex items-center gap-2 text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-gamepad"></i> 5v5 팀 배정
+                </button>
+                <button onclick="switchTab('leaderboard')" id="tab-leaderboard" class="tab-btn px-4 py-1.5 rounded-md font-bold transition flex items-center gap-2 text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-trophy"></i> 파워 랭킹
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+
+        <!-- TAB 1: ROSTER & EXCEL MANAGEMENT -->
+        <section id="sec-roster" class="space-y-6">
+            <!-- Top Controls Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Excel Upload & Control -->
+                <div class="bg-valCard border border-gray-800 p-5 rounded-xl shadow-lg flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel text-green-500"></i> 엑셀 불러오기 / 내보내기
+                        </h2>
+                        <p class="text-xs text-gray-400 mb-4">
+                            <code>티어, 이름, 파워점수, 주챔1, 주챔2, 주챔3</code> 엑셀 파일(.xlsx, .csv)을 읽고 씁니다.
+                        </p>
+                        <div class="space-y-3">
+                            <label class="admin-only block">
+                                <span class="sr-only">엑셀 파일 선택</span>
+                                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" class="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-valRed file:text-white hover:file:bg-red-600 cursor-pointer"/>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-4 pt-3 border-t border-gray-800">
+                        <button onclick="exportToExcel()" class="flex-1 bg-green-700 hover:bg-green-600 text-white py-2 px-3 rounded text-xs font-bold transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-download"></i> 엑셀 파일 다운로드
+                        </button>
+                        <button onclick="clearAllData()" class="admin-only bg-gray-800 hover:bg-red-900/50 text-red-400 py-2 px-3 rounded text-xs font-bold transition border border-red-900/40">
+                            전체 초기화
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Player Form with Rank Selector Buttons -->
+                <div class="admin-only bg-valCard border border-gray-800 p-5 rounded-xl shadow-lg lg:col-span-2">
+                    <h2 class="text-base font-bold text-white mb-3 flex items-center justify-between">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-user-plus text-valCyan"></i> 선수 신규 등록</span>
+                        <span class="text-xs font-normal text-gray-400">승률 ÷ 2 + 평균 ACS ÷ 10 + 티어 점수</span>
+                    </h2>
+                    
+                    <form id="add-player-form" onsubmit="handleAddPlayer(event)" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">선수 이름</label>
+                                <input type="text" id="input-name" placeholder="닉네임 입력" required class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-valRed">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">선택된 티어 / 랭크</label>
+                                <input type="text" id="input-tier" placeholder="티어를 선택하세요" required readonly class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-valGold font-bold focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">내전 승률 (%)</label>
+                                <input type="number" min="0" max="100" step="0.1" id="input-winrate" value="50" oninput="updateAddPowerScore()" placeholder="예: 55" required class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white text-center focus:outline-none focus:border-valCyan">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">평균 ACS</label>
+                                <input type="number" min="0" step="0.1" id="input-acs" value="100" oninput="updateAddPowerScore()" placeholder="예: 254" required class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white text-center focus:outline-none focus:border-valCyan">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">파워 점수 (자동 계산)</label>
+                                <input type="number" step="0.1" id="input-power" placeholder="자동 계산" required readonly class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-valCyan font-bold text-center focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Rank Selector Buttons Grid -->
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">티어 선택 (아이언 1: 0점, 티어 단계마다 +2점)</label>
+                            <div id="rank-buttons-container" class="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-12 gap-1.5 bg-gray-950 p-2 rounded border border-gray-800 max-h-40 overflow-y-auto">
+                                <!-- Rank Buttons generated via JS -->
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs text-gray-400 mb-1">주챔 1, 2, 3 (쉼표 구분)</label>
+                                <input type="text" id="input-agents" placeholder="소바, 페이드, 오멘" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-valRed">
+                                <label class="block text-xs text-gray-400 mt-2 mb-1">인물 카테고리 (복수 선택 가능)</label>
+                                <select id="input-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
+                                <div class="flex gap-1 mt-1"><input id="custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('input-categories','custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button></div>
+                            </div>
+                            <button type="submit" class="bg-valRed hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> 선수 등록
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Roster Table -->
+            <div class="bg-valCard border border-gray-800 rounded-xl p-5 shadow-lg space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list text-valRed"></i> 파워랭킹 명단 목록 (<span id="player-count">0</span>명)
+                    </h3>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-xs"></i>
+                            <input type="text" id="search-player" oninput="renderRosterTable()" placeholder="이름 또는 주챔 검색..." class="w-full bg-gray-950 border border-gray-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-valRed">
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-gray-800 rounded-lg">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-400 uppercase border-b border-gray-800 font-bold">
+                            <tr>
+                                <th class="px-3 py-2.5 text-center w-12">선택</th>
+                                <th class="px-3 py-2.5 text-center">티어/랭크</th>
+                                <th class="px-4 py-2.5">이름</th>
+                                <th class="px-3 py-2.5 text-center font-bold text-white">파워 점수</th>
+                                <th class="px-4 py-2.5">주챔</th>
+                                <th class="px-4 py-2.5">카테고리</th>
+                                <th class="px-3 py-2.5 text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-tbody" class="divide-y divide-gray-800/60 bg-gray-900/40">
+                            <!-- Dynamic Excel Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: MATCHMAKING & AUTO-BALANCE -->
+        <section id="sec-matchmaking" class="hidden space-y-6">
+            <!-- Active Selection Bar -->
+            <div class="bg-valCard border border-gray-800 p-5 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-scale-balanced text-valCyan"></i> 5v5 내전 팀 균형 자동 배정기
+                    </h2>
+                    <p class="text-xs text-gray-400">선택된 <span id="active-selected-count" class="text-valCyan font-bold">0</span>/10 명의 파워점수 합산 차이를 최소화하여 팀을 나눕니다.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="autoSelectTop(10)" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-2 rounded text-xs font-medium border border-gray-700">
+                        상위 10명 선택
+                    </button>
+                    <button onclick="runAutoBalance()" class="bg-valRed hover:bg-red-600 text-white font-bold px-6 py-2 rounded text-xs transition shadow-lg flex items-center gap-2 val-clip-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 5v5 팀 균형 배정
+                    </button>
+                </div>
+            </div>
+
+            <!-- Balanced Teams Container -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                <!-- Team A (Red Side) -->
+                <div class="bg-valCard border-2 border-red-500/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                    <div class="bg-red-500/20 absolute top-0 left-0 right-0 h-1"></div>
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-800">
+                        <div>
+                            <span class="text-xs font-bold text-red-400 tracking-widest uppercase">TEAM 1</span>
+                            <input id="team-a-name" type="text" value="팀 1" maxlength="24" aria-label="팀 1 이름" oninput="setTeamName('A', this.value)" class="mt-1 w-full max-w-[220px] bg-transparent text-2xl font-black text-white font-teko tracking-wide border-b border-red-400/40 focus:border-red-400 focus:outline-none">
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400">총 파워점수</span>
+                            <div id="team-a-total" class="text-2xl font-extrabold text-valRed font-teko leading-none">0</div>
+                        </div>
+                    </div>
+                    <!-- Player List -->
+                    <div id="team-a-players" class="space-y-2.5 min-h-[280px]">
+                        <!-- Dynamic rendered -->
+                    </div>
+                </div>
+
+                <!-- Team B (Blue Side) -->
+                <div class="bg-valCard border-2 border-cyan-500/30 rounded-xl p-5 shadow-xl relative overflow-hidden">
+                    <div class="bg-cyan-500/20 absolute top-0 left-0 right-0 h-1"></div>
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-800">
+                        <div>
+                            <span class="text-xs font-bold text-cyan-400 tracking-widest uppercase">TEAM 2</span>
+                            <input id="team-b-name" type="text" value="팀 2" maxlength="24" aria-label="팀 2 이름" oninput="setTeamName('B', this.value)" class="mt-1 w-full max-w-[220px] bg-transparent text-2xl font-black text-white font-teko tracking-wide border-b border-cyan-400/40 focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400">총 파워점수</span>
+                            <div id="team-b-total" class="text-2xl font-extrabold text-valCyan font-teko leading-none">0</div>
+                        </div>
+                    </div>
+                    <!-- Player List -->
+                    <div id="team-b-players" class="space-y-2.5 min-h-[280px]">
+                        <!-- Dynamic rendered -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Stats & Copy Section -->
+            <div class="bg-valCard border border-gray-800 p-5 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-6">
+                    <div>
+                        <span class="text-xs text-gray-400 block">팀 간 파워점수 차이</span>
+                        <span id="match-diff" class="text-lg font-bold text-white">0 점</span>
+                    </div>
+                    <div class="h-8 border-r border-gray-800"></div>
+                    <div>
+                        <span class="text-xs text-gray-400 block">팀 평균 점수</span>
+                        <span id="match-avg" class="text-xs font-semibold text-gray-300">A팀: 0.00 / B팀: 0.00</span>
+                    </div>
+                </div>
+                <button onclick="copyMatchSummary()" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-valGold px-4 py-2.5 rounded-lg text-xs font-bold border border-gray-700 transition flex items-center justify-center gap-2">
+                    <i class="fa-regular fa-copy"></i> 디스코드/카톡 공유용 결과 복사
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 3: LEADERBOARD -->
+        <section id="sec-leaderboard" class="hidden space-y-6">
+            <div class="bg-valCard border border-gray-800 rounded-xl p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-white flex items-center gap-2 font-teko tracking-wider">
+                            <i class="fa-solid fa-trophy text-yellow-500"></i> VALORANT POWER RANKINGS
+                        </h2>
+                        <p class="text-xs text-gray-400">파워점수 순으로 정렬된 파워 랭킹 순위표입니다.</p>
+                    </div>
+                </div>
+
+                <div id="leaderboard-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dyn cards rendered -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+    <div id="admin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center hidden p-4">
+        <div class="bg-valCard border border-gray-700 rounded-xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center"><h3 class="text-white font-black">관리자 로그인</h3><button onclick="closeAdminModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <p class="text-xs text-gray-400">관리자 계정의 이메일과 비밀번호로 로그인하세요.</p>
+            <input id="admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm text-white">
+            <button onclick="adminLogin()" class="w-full bg-valRed hover:bg-red-600 rounded py-2 text-white font-bold text-sm">로그인</button>
+            <p class="text-[10px] text-gray-500">비밀번호는 사이트 코드에 저장되지 않으며 Supabase 인증으로 확인됩니다.</p>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Player -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-valCard border border-gray-700 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-valCyan"></i> 선수 항목 수정
+                </h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form onsubmit="handleSaveEditPlayer(event)" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">이름</label>
+                    <input type="text" id="edit-name" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-valRed">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">티어 / 랭크</label>
+                        <input type="text" id="edit-tier" readonly required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs text-valGold font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">내전 승률 (%)</label>
+                        <input type="number" min="0" max="100" step="0.1" id="edit-winrate" oninput="updateEditPowerScore()" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs text-white text-center">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">평균 ACS</label>
+                        <input type="number" min="0" step="0.1" id="edit-acs" oninput="updateEditPowerScore()" required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs text-white text-center">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">파워 점수 (자동 계산)</label>
+                        <input type="number" step="0.1" id="edit-power" readonly required class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-xs text-valCyan font-bold text-center">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">티어 빠른 변경</label>
+                    <div id="edit-rank-buttons-container" class="grid grid-cols-4 sm:grid-cols-6 gap-1 bg-gray-950 p-2 rounded border border-gray-800 max-h-32 overflow-y-auto">
+                        <!-- Buttons rendered dynamically -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">주챔 선택 (최대 3명)</label>
+                    <div id="edit-agent-picker" class="grid grid-cols-4 sm:grid-cols-6 gap-2 bg-gray-950 border border-gray-800 rounded p-2 max-h-52 overflow-y-auto"><span class="text-xs text-gray-500">요원 목록 불러오는 중...</span></div>
+                    <input type="hidden" id="edit-agents">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">인물 카테고리 (복수 선택 가능)</label>
+                    <select id="edit-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
+                    <div class="flex gap-1 mt-1"><input id="edit-custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('edit-categories','edit-custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button></div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-800 text-gray-300 rounded text-xs">취소</button>
+                    <button type="submit" class="px-5 py-2 bg-valRed text-white font-bold rounded text-xs hover:bg-red-600">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950 py-4 text-center text-xs text-gray-500">
+        발로란트 커스텀 내전 파워랭킹 &copy; 2026. 데이터는 온라인 데이터베이스에 저장됩니다.
+    </footer>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-valRed text-white px-4 py-3 rounded-lg shadow-2xl transition transform translate-y-20 opacity-0 pointer-events-none z-50 flex items-center gap-2 text-xs font-bold">
+        <i class="fa-solid fa-circle-info"></i> <span id="toast-msg">알림 메시지</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./supabase-config.js"></script>
+    <!-- JavaScript Logic -->
+    <script>
+        // Rank score: Iron 1 = 0, each competitive rank step adds 2 points.
+        const VALORANT_RANKS = [
+            '아이언 1','아이언 2','아이언 3','브론즈 1','브론즈 2','브론즈 3',
+            '실버 1','실버 2','실버 3','골드 1','골드 2','골드 3',
+            '플래티넘 1','플래티넘 2','플래티넘 3','다이아몬드 1','다이아몬드 2','다이아몬드 3',
+            '초월자 1','초월자 2','초월자 3','불멸 1','불멸 2','불멸 3','레디언트'
+        ].map((name, index) => ({ name, score: index * 2 }));
+        const RANK_BUTTON_LIST = VALORANT_RANKS;
+
+        // Total power = win rate / 2 + average ACS / 10 + rank points.
+        function calculatePowerScore(winRate, acs, tier) {
+            const rank = RANK_BUTTON_LIST.find(r => r.name === tier);
+            const rankPoints = rank ? rank.score : 0;
+            return (Math.max(0, Math.min(100, Number(winRate) || 0)) / 2)
+                + (Math.max(0, Number(acs) || 0) / 10)
+                + rankPoints;
+        }
+        function updateAddPowerScore() {
+            const score = calculatePowerScore(
+                document.getElementById('input-winrate').value,
+                document.getElementById('input-acs').value,
+                document.getElementById('input-tier').value
+            );
+            document.getElementById('input-power').value = score.toFixed(1);
+        }
+        function updateEditPowerScore() {
+            const score = calculatePowerScore(
+                document.getElementById('edit-winrate').value,
+                document.getElementById('edit-acs').value,
+                document.getElementById('edit-tier').value
+            );
+            document.getElementById('edit-power').value = score.toFixed(1);
+        }
+
+        // Agent Role Color Classifier
+        function getAgentClass(agentName) {
+            if (!agentName) return 'agent-default';
+            const name = agentName.trim();
+            const yellow = ['소바', '페이드', '브리치', '테호', '케이오', '케이/오', 'Sova', 'Fade', 'Breach', 'Kayo', 'KAY/O'];
+            const blue = ['오멘', '클로브', '아스트라', '브림스톤', 'Omen', 'Clove', 'Astra', 'Brimstone'];
+            const orange = ['네온', '제트', '레이나', '아이소', '피닉스', 'Neon', 'Jett', 'Reyna', 'Iso', 'Phoenix'];
+            const green = ['체임버', '웨이레이', '사이퍼', '바이스', '데드록', '데드로크', '비토', '세이지', 'Chamber', 'Waylay', 'Cypher', 'Vyse', 'Deadlock', 'Vito', 'Sage'];
+            const purple = ['올라운더', 'Flex', 'All-rounder'];
+
+            if (yellow.includes(name)) return 'agent-initiator';
+            if (blue.includes(name)) return 'agent-controller';
+            if (orange.includes(name)) return 'agent-duelist';
+            if (green.includes(name)) return 'agent-sentinel';
+            if (purple.includes(name)) return 'agent-flex';
+            return 'agent-default';
+        }
+
+        let players = [];
+        let teamA = [];
+        let teamB = [];
+        let selectedForSwap = null;
+        let selectedRankForAdd = null;
+
+        // Riot game assets (agent portraits + competitive rank icons)
+        let VAL_AGENTS = [];
+        let RANK_IMAGES = {};
+        let selectedEditAgents = [];
+        const AGENT_API = 'https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=ko-KR';
+        const RANK_ICON_BASE = 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04';
+        const AGENT_ALIASES = {
+            '데드로크':'데드록', '데드락':'데드록', 'deadlock':'데드록',
+            '케이오':'케이/오', 'kayo':'케이/오', 'kay/o':'케이/오', 'kay-o':'케이/오',
+            '바이스':'바이스', '바이퍼':'바이퍼', '비토':'비토', '웨이레이':'웨이레이',
+            '믹스':'믹스', '허쉬':'허시', 'hush':'허시'
+        };
+        function canonicalAgentName(name) {
+            const raw = String(name || '').trim();
+            if (!raw) return '';
+            const alias = AGENT_ALIASES[raw.toLowerCase()] || AGENT_ALIASES[raw];
+            if (alias) return alias;
+            const exact = VAL_AGENTS.find(a => a.name.toLowerCase() === raw.toLowerCase());
+            return exact ? exact.name : '';
+        }
+        function cleanAgentList(list) {
+            const cleaned = [];
+            (Array.isArray(list) ? list : String(list || '').split(',')).forEach(item => {
+                const canonical = canonicalAgentName(item);
+                if (canonical && !cleaned.includes(canonical) && cleaned.length < 3) cleaned.push(canonical);
+            });
+            return cleaned;
+        }
+        async function loadAgentAssets() {
+            try {
+                const res = await fetch(AGENT_API);
+                if (!res.ok) throw new Error('agent api');
+                const json = await res.json();
+                VAL_AGENTS = (json.data || []).filter(a => a.isPlayableCharacter && (a.displayIcon || a.displayIconSmall))
+                    .map(a => ({name:a.displayName, image:a.displayIconSmall || a.displayIcon, uuid:a.uuid}));
+                players = players.map(p => ({...p, agents: cleanAgentList(p.agents)}));
+                saveData();
+                renderEditAgentPicker();
+                renderAll();
+            } catch (e) {
+                const el = document.getElementById('edit-agent-picker');
+                if (el) el.innerHTML = '<span class="text-xs text-gray-500">요원 이미지를 불러오지 못했습니다. 네트워크 연결 후 새로고침해 주세요.</span>';
+            }
+        }
+        function loadRankAssets() {
+            // Competitive tier IDs 3-27 map to Iron 1 through Radiant.
+            // Use the static game-asset CDN directly so rank icons do not depend on
+            // parsing a changing API response or Fandom file-name redirects.
+            RANK_BUTTON_LIST.forEach((rank, index) => {
+                const tierId = index + 3;
+                RANK_IMAGES[rank.name] = `${RANK_ICON_BASE}/${tierId}/largeicon.png`;
+            });
+            renderRankButtons();
+        }
+        function getAgentImage(name) {
+            const canonical = canonicalAgentName(name) || String(name || '').trim();
+            const a = VAL_AGENTS.find(x => x.name.toLowerCase() === canonical.toLowerCase());
+            return a ? a.image : '';
+        }
+        function renderEditAgentPicker() {
+            const el = document.getElementById('edit-agent-picker');
+            if (!el || !VAL_AGENTS.length) return;
+            selectedEditAgents = cleanAgentList(selectedEditAgents);
+            el.innerHTML = VAL_AGENTS.map(a => `<button type="button" class="agent-choice ${selectedEditAgents.includes(a.name)?'selected':''}" onclick="toggleEditAgent('${a.name.replace(/'/g, "\\'")}')"><img src="${a.image}" alt=""><span>${escapeHtml(a.name)}</span></button>`).join('');
+            document.getElementById('edit-agents').value = selectedEditAgents.join(', ');
+            setSelectedCategories('edit-categories', player.categories || []);
+        }
+        function toggleEditAgent(name) {
+            name = canonicalAgentName(name);
+            if (!name) return;
+            if (selectedEditAgents.includes(name)) selectedEditAgents = selectedEditAgents.filter(x => x !== name);
+            else if (selectedEditAgents.length < 3) selectedEditAgents.push(name);
+            else showToast('주챔은 최대 3명까지 선택할 수 있습니다.');
+            renderEditAgentPicker();
+        }
+        function rankImageUrl(tier) {
+            const map = {'아이언':'Iron','브론즈':'Bronze','실버':'Silver','골드':'Gold','플래티넘':'Platinum','다이아몬드':'Diamond','초월자':'Ascendant','불멸':'Immortal','레디언트':'Radiant'};
+            const m = String(tier).match(/^(아이언|브론즈|실버|골드|플래티넘|다이아몬드|초월자|불멸|레디언트)\s*(\d)?/);
+            if (!m) return '';
+            const en = map[m[1]], n = m[2] || '';
+            const key = en === 'Radiant' ? '레디언트' : `${m[1]} ${n}`;
+            if (RANK_IMAGES[key]) return RANK_IMAGES[key];
+            const rankIndex = RANK_BUTTON_LIST.findIndex(r => r.name === key);
+            return rankIndex >= 0 ? `${RANK_ICON_BASE}/${rankIndex + 3}/largeicon.png` : '';
+        }
+
+        function rankImageHtml(tier, extraClass = 'rank-icon') {
+            const url = rankImageUrl(tier);
+            return url ? `<img class="${extraClass}" src="${url}" alt="${escapeHtml(tier)}" loading="lazy" onerror="this.style.display='none'">` : '';
+        }
+
+        let teamNames = { A: '팀 1', B: '팀 2' };
+        let dbClient = null, isAdmin = false, currentUser = null, cloudReady = false;
+        let appState = { players: [], teamNames: {A:'팀 1',B:'팀 2'} };
+        const DEFAULT_CATEGORIES = ['IGL','FLEX','타격대','척후대','감시자','전략가','오퍼레이터'];
+        let categoryOptions = [...DEFAULT_CATEGORIES];
+        function loadTeamNames() {
+            const a = document.getElementById('team-a-name'), b = document.getElementById('team-b-name');
+            if (a) a.value = teamNames.A || '팀 1'; if (b) b.value = teamNames.B || '팀 2';
+        }
+        function setTeamName(team, value) {
+            if (!isAdmin) return;
+            teamNames[team] = String(value || '').slice(0, 24); persistState();
+        }
+        function updateAdminUI() {
+            document.body.classList.toggle('is-admin', isAdmin);
+            document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
+            document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
+            document.getElementById('cloud-status').textContent = cloudReady ? (isAdmin ? '관리자 접속됨 · 온라인 저장' : '공개 열람 · 온라인 데이터') : 'Supabase 설정 필요';
+            document.querySelectorAll('#team-a-name,#team-b-name').forEach(el => el.readOnly = !isAdmin);
+            renderAll();
+        }
+        function openAdminModal(){ document.getElementById('admin-modal').classList.remove('hidden'); }
+        function closeAdminModal(){ document.getElementById('admin-modal').classList.add('hidden'); }
+        async function adminLogin(){
+            if(!dbClient){showToast('Supabase 설정을 먼저 완료해 주세요.');return;}
+            const password=document.getElementById('admin-password').value;
+            const response=await fetch('/api/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+            const payload=await response.json().catch(()=>({}));
+            if(!response.ok||!payload.session){showToast(payload.error||'관리자 로그인에 실패했습니다.');return;}
+            const {error}=await dbClient.auth.setSession(payload.session);
+            if(error){showToast('로그인 세션 설정에 실패했습니다.');return;}
+            document.getElementById('admin-password').value='';
+            await refreshAdminStatus(); closeAdminModal(); showToast(isAdmin?'관리자 로그인 성공':'관리자 권한이 등록되지 않은 계정입니다.');
+        }
+        async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); isAdmin=false;currentUser=null;updateAdminUI();showToast('로그아웃했습니다.'); }
+        async function refreshAdminStatus(){
+            if(!dbClient)return; const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
+            if(!user){isAdmin=false;updateAdminUI();return;}
+            const {data,error}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
+            isAdmin=!!data&&!error; updateAdminUI();
+        }
+        async function initCloud(){
+            const url=window.SUPABASE_URL, key=window.SUPABASE_ANON_KEY;
+            if(!url||!key||url.includes('YOUR_')||key.includes('YOUR_')){cloudReady=false;updateAdminUI();showToast('Supabase 설정 파일을 먼저 작성해야 합니다.');return;}
+            dbClient=window.supabase.createClient(url,key); cloudReady=true;
+            await refreshAdminStatus();
+            const {data,error}=await dbClient.from('app_state').select('data').eq('id',1).single();
+            if(error){console.error(error);showToast('온라인 데이터를 읽지 못했습니다. Supabase SQL 설정을 확인해 주세요.');}
+            else applyAppState(data?.data||{});
+            updateAdminUI();
+        }
+        function applyAppState(data){
+            players=Array.isArray(data.players)?data.players:[];
+            players=players.map(p=>{const winRate=p.winRate==null||p.winRate===''?50:Number(p.winRate);const avgAcs=p.avgAcs==null||p.avgAcs===''?100:Number(p.avgAcs);return {...p,winRate,avgAcs,categories:Array.isArray(p.categories)?p.categories:[],agents:Array.isArray(p.agents)?p.agents:[],powerScore:calculatePowerScore(winRate,avgAcs,p.tier)};});
+            teamNames={A:data.teamNames?.A||'팀 1',B:data.teamNames?.B||'팀 2'};
+            categoryOptions=[...new Set([...DEFAULT_CATEGORIES,...(Array.isArray(data.categoryOptions)?data.categoryOptions:[]),...players.flatMap(p=>p.categories||[])])];
+            loadTeamNames(); populateCategorySelects(); renderAll();
+        }
+        function collectAppState(){return {players,teamNames,categoryOptions,updatedAt:new Date().toISOString()};}
+        async function persistState(){
+            if(!dbClient||!isAdmin)return;
+            const {error}=await dbClient.from('app_state').upsert({id:1,data:collectAppState(),updated_at:new Date().toISOString()});
+            if(error){console.error(error);showToast('저장 실패: '+error.message);} 
+        }
+        function saveData(){ persistState(); }
+        function populateCategorySelects(){ ['input-categories','edit-categories'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const selected=[...el.selectedOptions].map(o=>o.value);el.innerHTML=categoryOptions.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');[...el.options].forEach(o=>o.selected=selected.includes(o.value));}); }
+        function getSelectedCategories(id){const el=document.getElementById(id);return el?[...el.selectedOptions].map(o=>o.value):[];}
+        function setSelectedCategories(id,values){const el=document.getElementById(id);if(!el)return;[...el.options].forEach(o=>o.selected=(values||[]).includes(o.value));}
+        function addCustomCategory(selectId,inputId){const input=document.getElementById(inputId),name=input.value.trim();if(!name)return;if(!categoryOptions.includes(name))categoryOptions.push(name);populateCategorySelects();const sel=document.getElementById(selectId);[...sel.options].forEach(o=>{if(o.value===name)o.selected=true;});input.value='';if(isAdmin)persistState();}
+        window.onload = async function() {
+            renderRankButtons(); loadRankAssets(); await initCloud();
+            await loadAgentAssets(); renderAll(); updateAddPowerScore();
+        };
+
+        function renderRankButtons() {
+            const container = document.getElementById('rank-buttons-container');
+            const editContainer = document.getElementById('edit-rank-buttons-container');
+            
+            const html = RANK_BUTTON_LIST.map(r => `
+                <button type="button" onclick="selectRankForAdd('${r.name}', ${r.score})" class="rank-btn text-[11px] py-1 px-1.5 border border-gray-800 rounded bg-gray-900 text-gray-300 hover:border-valRed hover:text-white truncate">
+                    <img class="rank-icon" src="${rankImageUrl(r.name)}" onerror="this.style.display='none'">${r.name}
+                </button>
+            `).join('');
+
+            const editHtml = RANK_BUTTON_LIST.map(r => `
+                <button type="button" onclick="selectRankForEdit('${r.name}', ${r.score})" class="edit-rank-btn text-[10px] py-1 px-1 border border-gray-800 rounded bg-gray-900 text-gray-300 hover:border-valCyan hover:text-white truncate">
+                    <img class="rank-icon" src="${rankImageUrl(r.name)}" onerror="this.style.display='none'">${r.name}
+                </button>
+            `).join('');
+
+            container.innerHTML = html;
+            editContainer.innerHTML = editHtml;
+        }
+
+        function selectRankForAdd(name, score) {
+            document.getElementById('input-tier').value = name;
+            updateAddPowerScore();
+            selectedRankForAdd = name;
+
+            document.querySelectorAll('#rank-buttons-container .rank-btn').forEach(btn => {
+                if (btn.innerText.trim() === name) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function selectRankForEdit(name, score) {
+            document.getElementById('edit-tier').value = name;
+            updateEditPowerScore();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-valRed', 'text-white');
+                btn.classList.add('text-gray-400');
+            });
+
+            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.add('bg-valRed', 'text-white');
+            activeBtn.classList.remove('text-gray-400');
+
+            if (tabName === 'leaderboard') renderLeaderboard();
+        }
+
+        // --- EXCEL FILE PARSER ---
+        function handleFileUpload(e) {
+            if(!isAdmin){showToast('관리자만 명단을 가져올 수 있습니다.');return;}
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (json.length === 0) return;
+
+                    let colIdx = { tier: 0, name: 1, power: 2, winRate: 3, acs: 4 };
+                    let hasStatsColumns = false;
+                    const headerRow = json[0];
+
+                    if (headerRow && headerRow.length > 0) {
+                        headerRow.forEach((colName, idx) => {
+                            const str = String(colName || '').trim().toUpperCase();
+                            if (str.includes('티어') || str.includes('TIER') || str.includes('랭크')) colIdx.tier = idx;
+                            else if (str.includes('이름') || str.includes('NAME')) colIdx.name = idx;
+                            else if (str.includes('승률') || str.includes('WINRATE')) { colIdx.winRate = idx; hasStatsColumns = true; }
+                            else if (str.includes('ACS')) { colIdx.acs = idx; hasStatsColumns = true; }
+                            else if (str.includes('파워') || str.includes('SCORE') || str.includes('점수')) colIdx.power = idx;
+                        });
+                    }
+
+                    const imported = [];
+                    for (let i = 1; i < json.length; i++) {
+                        const row = json[i];
+                        if (!row || row.length === 0) continue;
+
+                        const name = String(row[colIdx.name] || '').trim();
+                        if (!name) continue;
+
+                        const rawTier = String(row[colIdx.tier] || '실버 1').trim();
+                        let powerScore = parseFloat(row[colIdx.power]);
+                        const winRaw = hasStatsColumns ? parseFloat(row[colIdx.winRate]) : NaN;
+                        const acsRaw = hasStatsColumns ? parseFloat(row[colIdx.acs]) : NaN;
+                        const winRate = Number.isFinite(winRaw) ? Math.max(0, Math.min(100, winRaw)) : 50;
+                        const avgAcs = Number.isFinite(acsRaw) ? Math.max(0, acsRaw) : 100;
+
+                        // Fallback score by tier lookup if power score is missing
+                        if (isNaN(powerScore) || powerScore <= 0) {
+                            const matchedRank = RANK_BUTTON_LIST.find(r => rawTier.includes(r.name) || r.name.includes(rawTier));
+                            powerScore = matchedRank ? matchedRank.score : 40;
+                        }
+
+                        // Collect main agents
+                        const agents = [];
+                        for (let aIdx = hasStatsColumns ? 5 : 3; aIdx < row.length; aIdx++) {
+                            const ag = String(row[aIdx] || '').trim();
+                            if (ag && !agents.includes(ag) && !['P','B','U','C','M'].includes(ag.toUpperCase())) {
+                                agents.push(ag);
+                            }
+                        }
+
+                        imported.push({
+                            id: Date.now() + Math.random().toString(36).substr(2, 4) + i,
+                            tier: rawTier,
+                            name: name,
+                            winRate,
+                            avgAcs,
+                            powerScore: calculatePowerScore(winRate, avgAcs, rawTier),
+                            agents: agents,
+                            categories: [],
+                            selected: false
+                        });
+                    }
+
+                    if (imported.length > 0) {
+                        players = imported;
+                        saveData();
+                        renderAll();
+                        showToast(`엑셀에서 ${imported.length}명의 명단을 불러왔습니다.`);
+                    } else {
+                        alert('엑셀 데이터를 불러오지 못했습니다.');
+                    }
+                    document.getElementById('excel-file-input').value = '';
+                } catch (err) {
+                    console.error(err);
+                    alert('엑셀 파일 읽기에 실패했습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportToExcel() {
+            if (players.length === 0) {
+                showToast('내보낼 데이터가 없습니다.');
+                return;
+            }
+            const dataToExport = players.map(p => ({
+                '티어/랭크': p.tier,
+                '이름': p.name,
+                '내전 승률(%)': p.winRate ?? 0,
+                '평균 ACS': p.avgAcs ?? 0,
+                '파워점수': p.powerScore,
+                '주챔1': p.agents[0] || '',
+                '주챔2': p.agents[1] || '',
+                '주챔3': p.agents[2] || '',
+                '카테고리': (p.categories||[]).join(', ')
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "PowerRankings");
+            XLSX.writeFile(workbook, "Valorant_Power_Rankings.xlsx");
+        }
+
+        // --- ADD PLAYER ---
+        function handleAddPlayer(e) {
+            e.preventDefault(); if(!isAdmin){showToast('관리자만 수정할 수 있습니다.');return;}
+            const tier = document.getElementById('input-tier').value.trim();
+            const name = document.getElementById('input-name').value.trim();
+            const winRate = Math.max(0, Math.min(100, parseFloat(document.getElementById('input-winrate').value) || 0));
+            const avgAcs = Math.max(0, parseFloat(document.getElementById('input-acs').value) || 0);
+            const powerScore = calculatePowerScore(winRate, avgAcs, tier);
+            const rawAgents = document.getElementById('input-agents').value;
+            const agents = cleanAgentList(rawAgents);
+            const categories = getSelectedCategories('input-categories');
+
+            if (!tier) {
+                showToast('티어를 선택해 주세요.');
+                return;
+            }
+
+            players.push({
+                id: Date.now() + Math.random().toString(36).substr(2, 4),
+                tier, name, winRate, avgAcs, powerScore, agents, categories, selected: false
+            });
+
+            saveData();
+            renderAll();
+            showToast(`'${name}' 선수가 등록되었습니다.`);
+            document.getElementById('input-name').value = '';
+            setSelectedCategories('input-categories', []);
+            document.getElementById('input-winrate').value = '50';
+            document.getElementById('input-acs').value = '100';
+            updateAddPowerScore();
+        }
+
+        // --- EDIT MODAL HANDLERS ---
+        function openEditModal(id) {
+            if(!isAdmin){showToast('프로필 수정은 관리자만 가능합니다.');return;}
+            const player = players.find(p => p.id === id);
+            if (!player) return;
+
+            document.getElementById('edit-id').value = player.id;
+            document.getElementById('edit-name').value = player.name;
+            document.getElementById('edit-tier').value = player.tier;
+            document.getElementById('edit-winrate').value = player.winRate ?? 0;
+            document.getElementById('edit-acs').value = player.avgAcs ?? 0;
+            updateEditPowerScore();
+            selectedEditAgents = cleanAgentList(player.agents || []).slice(0,3);
+            document.getElementById('edit-agents').value = selectedEditAgents.join(', ');
+            setSelectedCategories('edit-categories', player.categories || []);
+            renderEditAgentPicker();
+
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        function handleSaveEditPlayer(e) {
+            e.preventDefault(); if(!isAdmin){showToast('관리자만 수정할 수 있습니다.');return;}
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value.trim();
+            const tier = document.getElementById('edit-tier').value.trim();
+            const winRate = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-winrate').value) || 0));
+            const avgAcs = Math.max(0, parseFloat(document.getElementById('edit-acs').value) || 0);
+            const powerScore = calculatePowerScore(winRate, avgAcs, tier);
+            const agents = [...selectedEditAgents];
+            const categories = getSelectedCategories('edit-categories');
+
+            const idx = players.findIndex(p => p.id === id);
+            if (idx >= 0) {
+                players[idx] = { ...players[idx], name, tier, winRate, avgAcs, powerScore, agents, categories };
+                saveData();
+                renderAll();
+                closeEditModal();
+                showToast(`'${name}' 선수의 항목이 수정되었습니다.`);
+            }
+        }
+
+        function toggleSelectPlayer(id) {
+            const player = players.find(p => p.id === id);
+            if (player) {
+                player.selected = !player.selected;
+                saveData();
+                renderRosterTable();
+                updateActiveCount();
+            }
+        }
+
+        function deletePlayer(id) {
+            if(!isAdmin){showToast('관리자만 삭제할 수 있습니다.');return;}
+            players = players.filter(p => p.id !== id);
+            saveData();
+            renderAll();
+            showToast('선수가 삭제되었습니다.');
+        }
+
+        function clearAllData() {
+            if(!isAdmin){showToast('관리자만 초기화할 수 있습니다.');return;}
+            if (confirm('모든 명단 데이터를 삭제하시겠습니까?')) {
+                players = [];
+                teamA = [];
+                teamB = [];
+                saveData();
+                renderAll();
+                showToast('초기화되었습니다.');
+            }
+        }
+
+        function autoSelectTop(num) {
+            players.forEach(p => p.selected = false);
+            const sorted = [...players].sort((a, b) => b.powerScore - a.powerScore);
+            for (let i = 0; i < Math.min(num, sorted.length); i++) {
+                const target = players.find(p => p.id === sorted[i].id);
+                if (target) target.selected = true;
+            }
+            saveData();
+            renderRosterTable();
+            updateActiveCount();
+            showToast(`상위 ${num}명의 선수가 선택되었습니다.`);
+        }
+
+        // --- 5v5 AUTO MATCHMAKING ---
+        function runAutoBalance() {
+            const active = players.filter(p => p.selected);
+            if (active.length !== 10) {
+                alert(`5v5 내전 팀 배정을 위해 정확히 10명의 선수를 선택해 주세요. (현재 선택됨: ${active.length}명)`);
+                return;
+            }
+
+            function getCombinations(arr, k) {
+                if (k === 0) return [[]];
+                if (arr.length === 0) return [];
+                const head = arr[0];
+                const tail = arr.slice(1);
+                return [
+                    ...getCombinations(tail, k - 1).map(c => [head, ...c]),
+                    ...getCombinations(tail, k)
+                ];
+            }
+
+            const combinations = getCombinations(active, 5);
+            const totalScore = active.reduce((acc, p) => acc + p.powerScore, 0);
+
+            let bestDiff = Infinity;
+            let bestA = [];
+            let bestB = [];
+
+            combinations.forEach(subA => {
+                const sumA = subA.reduce((acc, p) => acc + p.powerScore, 0);
+                const sumB = totalScore - sumA;
+                const diff = Math.abs(sumA - sumB);
+
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestA = subA;
+                    const setA = new Set(subA.map(p => p.id));
+                    bestB = active.filter(p => !setA.has(p.id));
+                }
+            });
+
+            teamA = bestA.sort((a, b) => b.powerScore - a.powerScore);
+            teamB = bestB.sort((a, b) => b.powerScore - a.powerScore);
+            selectedForSwap = null;
+
+            renderTeams();
+            showToast(`팀 균형 구성 완료! (점수 차이: ${bestDiff.toFixed(1)}점)`);
+        }
+
+        function handleSwapClick(team, index) {
+            const targetPlayer = team === 'A' ? teamA[index] : teamB[index];
+
+            if (!selectedForSwap) {
+                selectedForSwap = { team, index, player: targetPlayer };
+                showToast(`${targetPlayer.name} 선택됨 (상대 팀의 교체할 선수를 클릭하세요)`);
+                renderTeams();
+            } else {
+                if (selectedForSwap.team === team) {
+                    selectedForSwap = { team, index, player: targetPlayer };
+                    renderTeams();
+                } else {
+                    if (selectedForSwap.team === 'A') {
+                        teamA[selectedForSwap.index] = targetPlayer;
+                        teamB[index] = selectedForSwap.player;
+                    } else {
+                        teamB[selectedForSwap.index] = targetPlayer;
+                        teamA[index] = selectedForSwap.player;
+                    }
+                    selectedForSwap = null;
+                    renderTeams();
+                    showToast('선수가 수동 교체되었습니다.');
+                }
+            }
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function renderAll() {
+            renderRosterTable();
+            updateActiveCount();
+            renderTeams();
+        }
+
+        function renderRosterTable() {
+            const tbody = document.getElementById('roster-tbody');
+            const searchKeyword = (document.getElementById('search-player')?.value || '').toLowerCase();
+
+            const filtered = players.filter(p => 
+                p.name.toLowerCase().includes(searchKeyword) ||
+                (p.agents||[]).some(a => a.toLowerCase().includes(searchKeyword)) ||
+                p.tier.toLowerCase().includes(searchKeyword) || (p.categories||[]).some(c=>c.toLowerCase().includes(searchKeyword))
+            );
+
+            document.getElementById('player-count').innerText = players.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">등록된 선수가 없습니다. 엑셀을 업로드하거나 새 선수를 추가해 주세요.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(p => {
+                const agentBadges = (p.agents||[]).map(ag => `
+                    <span class="px-2 py-0.5 rounded text-[11px] font-bold ${getAgentClass(ag)} inline-flex items-center gap-1 mr-1">
+                        ${getAgentImage(ag) ? `<img class="agent-portrait" src="${getAgentImage(ag)}" alt="">` : ''}${escapeHtml(ag)}
+                    </span>
+                `).join('');
+
+                const categoryBadges=(p.categories||[]).map(c=>`<span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-200 text-[10px] mr-1">${escapeHtml(c)}</span>`).join('');
+                return `
+                    <tr ${isAdmin?`onclick="openEditModal('${p.id}')"`:''} class="hover:bg-gray-800/50 transition ${isAdmin?'cursor-pointer':''} ${p.selected ? 'bg-valRed/10 border-l-4 border-valRed' : ''}">
+                        <td class="px-3 py-2.5 text-center">
+                            <input type="checkbox" ${p.selected ? 'checked' : ''} onchange="toggleSelectPlayer('${p.id}')" onclick="event.stopPropagation()" class="w-4 h-4 accent-valRed cursor-pointer rounded">
+                        </td>
+                        <td class="px-3 py-2.5 text-center font-bold text-gray-300"><span class="inline-flex items-center justify-center">${rankImageHtml(p.tier)}${escapeHtml(p.tier)}</span></td>
+                        <td class="px-4 py-2.5 font-bold text-white ${isAdmin?'cursor-pointer hover:text-valCyan':''}" ${isAdmin?`onclick="openEditModal('${p.id}')"`:''}>
+                            ${escapeHtml(p.name)} ${isAdmin?'<i class="fa-solid fa-pen text-[10px] text-gray-600 ml-1"></i>':''}
+                        </td>
+                        <td class="px-3 py-2.5 text-center font-extrabold text-valCyan">${p.powerScore.toFixed(1)} 점</td>
+                        <td class="px-4 py-2.5">${agentBadges || '<span class="text-gray-600">-</span>'}</td>
+                        <td class="px-4 py-2.5">${categoryBadges || '<span class="text-gray-600">-</span>'}</td>
+                        <td class="admin-action px-3 py-2.5 text-right space-x-1">
+                            <button onclick="event.stopPropagation();openEditModal('${p.id}')" class="text-gray-400 hover:text-valCyan p-1" title="수정">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="event.stopPropagation();deletePlayer('${p.id}')" class="text-gray-500 hover:text-red-400 p-1" title="삭제">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateActiveCount() {
+            const count = players.filter(p => p.selected).length;
+            const cntSpan = document.getElementById('active-selected-count');
+            if (cntSpan) {
+                cntSpan.innerText = count;
+                cntSpan.className = count === 10 ? 'text-green-400 font-bold' : 'text-valRed font-bold';
+            }
+        }
+
+        function renderTeams() {
+            const containerA = document.getElementById('team-a-players');
+            const containerB = document.getElementById('team-b-players');
+
+            const sumA = teamA.reduce((s, p) => s + p.powerScore, 0);
+            const sumB = teamB.reduce((s, p) => s + p.powerScore, 0);
+
+            document.getElementById('team-a-total').innerText = sumA.toFixed(1);
+            document.getElementById('team-b-total').innerText = sumB.toFixed(1);
+
+            const diff = Math.abs(sumA - sumB).toFixed(1);
+            const avgA = teamA.length ? (sumA / teamA.length).toFixed(1) : '0.0';
+            const avgB = teamB.length ? (sumB / teamB.length).toFixed(1) : '0.0';
+
+            document.getElementById('match-diff').innerText = `${diff} 점 차이`;
+            document.getElementById('match-avg').innerText = `${teamNames.A || '팀 1'}: ${avgA} / ${teamNames.B || '팀 2'}: ${avgB}`;
+
+            // Render Team A
+            if (teamA.length === 0) {
+                containerA.innerHTML = `<div class="h-full flex items-center justify-center text-gray-600 text-xs py-12">선수 10명 선택 후 자동 팀 배정을 실행하세요.</div>`;
+            } else {
+                containerA.innerHTML = teamA.map((p, idx) => {
+                    const isSelected = selectedForSwap && selectedForSwap.team === 'A' && selectedForSwap.index === idx;
+                    const agentsHtml = p.agents.map(ag => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${getAgentClass(ag)}">${ag}</span>`).join(' ');
+
+                    return `
+                        <div onclick="handleSwapClick('A', ${idx})" class="p-2.5 bg-gray-950 border ${isSelected ? 'border-valCyan bg-cyan-950/40' : 'border-gray-800'} rounded-lg flex justify-between items-center cursor-pointer hover:border-red-500 transition">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xs font-bold text-gray-500 w-4 text-center">${idx + 1}</span>
+                                <div>
+                                    <div class="font-bold text-white text-xs">${escapeHtml(p.name)} <span class="inline-flex items-center text-[10px] text-gray-400 font-normal">${rankImageHtml(p.tier, 'w-4 h-4 object-contain mr-1')}(${p.tier})</span></div>
+                                    <div class="mt-1 flex flex-wrap gap-1">${agentsHtml}</div>
+                                </div>
+                            </div>
+                            <span class="font-extrabold text-valRed text-sm font-teko">${p.powerScore.toFixed(1)} 점</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Team B
+            if (teamB.length === 0) {
+                containerB.innerHTML = `<div class="h-full flex items-center justify-center text-gray-600 text-xs py-12">선수 10명 선택 후 자동 팀 배정을 실행하세요.</div>`;
+            } else {
+                containerB.innerHTML = teamB.map((p, idx) => {
+                    const isSelected = selectedForSwap && selectedForSwap.team === 'B' && selectedForSwap.index === idx;
+                    const agentsHtml = p.agents.map(ag => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${getAgentClass(ag)}">${ag}</span>`).join(' ');
+
+                    return `
+                        <div onclick="handleSwapClick('B', ${idx})" class="p-2.5 bg-gray-950 border ${isSelected ? 'border-valCyan bg-cyan-950/40' : 'border-gray-800'} rounded-lg flex justify-between items-center cursor-pointer hover:border-cyan-500 transition">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xs font-bold text-gray-500 w-4 text-center">${idx + 1}</span>
+                                <div>
+                                    <div class="font-bold text-white text-xs">${escapeHtml(p.name)} <span class="inline-flex items-center text-[10px] text-gray-400 font-normal">${rankImageHtml(p.tier, 'w-4 h-4 object-contain mr-1')}(${p.tier})</span></div>
+                                    <div class="mt-1 flex flex-wrap gap-1">${agentsHtml}</div>
+                                </div>
+                            </div>
+                            <span class="font-extrabold text-valCyan text-sm font-teko">${p.powerScore.toFixed(1)} 점</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function renderLeaderboard() {
+            const grid = document.getElementById('leaderboard-grid');
+            const sorted = [...players].sort((a, b) => b.powerScore - a.powerScore);
+
+            if (sorted.length === 0) {
+                grid.innerHTML = `<div class="col-span-3 text-center py-10 text-gray-500">등록된 선수가 없습니다.</div>`;
+                return;
+            }
+
+            grid.innerHTML = sorted.map((p, rank) => {
+                const place = rank === 0 ? '1st' : rank === 1 ? '2nd' : rank === 2 ? '3rd' : `${rank + 1}th`;
+                const podium = rank < 3;
+                const badgeClass = rank === 0
+                    ? 'bg-yellow-400 text-black'
+                    : rank === 1
+                        ? 'bg-slate-300 text-slate-950'
+                        : rank === 2
+                            ? 'bg-amber-700 text-white'
+                            : 'bg-gray-800 text-gray-300';
+                const agentsHtml = (p.agents || []).map(ag => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${getAgentClass(ag)}">${escapeHtml(ag)}</span>`).join(' ');
+                const categoriesHtml = (p.categories || []).map(c => `<span class="px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200 text-[10px]">${escapeHtml(c)}</span>`).join(' ');
+
+                return `
+                    <div onclick="openEditModal('${p.id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditModal('${p.id}')}" class="bg-gray-950 border ${rank === 0 ? 'border-yellow-500/70 ring-1 ring-yellow-500/20' : rank === 1 ? 'border-slate-400/70 ring-1 ring-slate-400/15' : rank === 2 ? 'border-amber-700/70 ring-1 ring-amber-700/15' : 'border-gray-800'} rounded-xl ${podium ? 'p-5 min-h-[176px]' : 'p-3.5 min-h-[132px]'} flex justify-between items-center relative cursor-pointer hover:border-valCyan hover:bg-gray-900/80 transition ${podium ? 'sm:col-span-1' : ''}">
+                        <div class="space-y-2 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="${badgeClass} font-black ${podium ? 'px-3 py-1.5 text-base' : 'px-2 py-1 text-xs'} rounded-md">${place}</span>
+                                <span class="font-bold text-white ${podium ? 'text-base' : 'text-sm'}">${escapeHtml(p.name)}</span>
+                            </div>
+                            <div class="inline-flex items-center text-xs text-gray-400">${rankImageHtml(p.tier, podium ? 'w-6 h-6 object-contain mr-1.5' : 'w-5 h-5 object-contain mr-1')}(${escapeHtml(p.tier)})</div>
+                            <div class="flex flex-wrap gap-1">${agentsHtml || '<span class="text-[10px] text-gray-600">주챔 미등록</span>'}</div>
+                            <div class="flex flex-wrap gap-1">${categoriesHtml}</div>
+                            <div class="text-[10px] text-gray-500">승률 ${Number(p.winRate ?? 50).toFixed(1)}% · ACS ${Number(p.avgAcs ?? 100).toFixed(1)}</div>
+                        </div>
+                        <div class="text-right shrink-0 ml-2">
+                            <div class="text-[10px] text-gray-500">파워 점수</div>
+                            <div class="${podium ? 'text-3xl' : 'text-xl'} font-black text-valCyan font-teko leading-none">${Number(p.powerScore || 0).toFixed(1)}</div>
+                            ${isAdmin?`<button type="button" onclick="event.stopPropagation();openEditModal('${p.id}')" class="mt-3 px-3 py-1.5 rounded bg-gray-800 hover:bg-valRed text-gray-200 text-[11px] font-bold transition"><i class="fa-solid fa-user-pen mr-1"></i>프로필 수정</button>`:''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function copyMatchSummary() {
+            if (teamA.length === 0 || teamB.length === 0) {
+                showToast('팀 배정을 먼저 실행해 주세요.');
+                return;
+            }
+
+            const sumA = teamA.reduce((s, p) => s + p.powerScore, 0);
+            const sumB = teamB.reduce((s, p) => s + p.powerScore, 0);
+
+            let text = `🎮 [발로란트 내전 5v5 팀 매칭 결과]\n\n`;
+            text += `🔴 ${teamNames.A || '팀 1'} - 총점 ${sumA.toFixed(1)}점\n`;
+            teamA.forEach((p, idx) => {
+                text += `${idx + 1}. ${p.name} (${p.tier} / ${p.powerScore.toFixed(1)}점 / 주챔: ${p.agents.join(', ') || '없음'})\n`;
+            });
+
+            text += `\n🔵 ${teamNames.B || '팀 2'} - 총점 ${sumB.toFixed(1)}점\n`;
+            teamB.forEach((p, idx) => {
+                text += `${idx + 1}. ${p.name} (${p.tier} / ${p.powerScore.toFixed(1)}점 / 주챔: ${p.agents.join(', ') || '없음'})\n`;
+            });
+
+            text += `\n⚖️ 팀 간 파워점수 차이: ${Math.abs(sumA - sumB).toFixed(1)}점`;
+
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            showToast('팀 구성 결과가 클립보드에 복사되었습니다!');
+        }
+
+        function loadSampleData(){ showToast('샘플 명단은 제거되었습니다. 실제 선수를 등록해 주세요.'); }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>

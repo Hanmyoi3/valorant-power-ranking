@@ -1,0 +1,8 @@
+{
+  "name": "valorant-power-ranking-site",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0"
+  }
+}
