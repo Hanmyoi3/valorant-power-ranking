@@ -179,6 +179,14 @@
         .rank-btn { border-radius: 7px !important; }
         .agent-choice { border-color: rgba(176,190,204,.16) !important; background: #111b26 !important; border-radius: 9px !important; }
         .agent-choice.selected { border-color: var(--vr-red) !important; background: rgba(255,70,85,.12) !important; }
+        #edit-modal > div { max-width: 1100px !important; width: min(96vw, 1100px) !important; max-height: 92vh; overflow-y: auto; }
+        #edit-modal form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+        #edit-modal form > div:last-child { grid-column: 1 / -1; position: sticky; bottom: -1px; background: #101820; padding: 12px 0 2px; }
+        .category-button-grid { display:flex; flex-wrap:wrap; gap:7px; padding:9px; background:rgba(6,11,17,.62); border:1px solid var(--vr-line); border-radius:10px; }
+        .category-btn { border:1px solid #374151; background:#111827; color:#cbd5e1; padding:7px 11px; border-radius:8px; font-size:12px; font-weight:700; transition:.15s; }
+        .category-btn.selected { background:rgba(255,70,85,.16); border-color:#ff4655; color:#fff; box-shadow:inset 0 0 0 1px rgba(255,70,85,.22); }
+        .category-btn:focus-visible { outline:2px solid #67e8f9; outline-offset:2px; }
+        @media (max-width: 700px) { #edit-modal form { grid-template-columns:1fr; } #edit-modal form > div:last-child { grid-column:auto; } #edit-modal > div { padding:16px !important; } }
         #admin-modal > div, #edit-modal > div { border-color: rgba(176,190,204,.18) !important; box-shadow: 0 24px 80px rgba(0,0,0,.55) !important; }
         footer { background: rgba(7,11,16,.72) !important; border-color: var(--vr-line) !important; }
         .val-clip-btn { clip-path: none !important; border-radius: 9px !important; }
@@ -321,7 +329,7 @@
                                 <div id="add-agent-picker" class="grid grid-cols-4 sm:grid-cols-6 gap-2 bg-gray-950 border border-gray-800 rounded p-2 max-h-52 overflow-y-auto"><span class="text-xs text-gray-500">요원 목록 불러오는 중...</span></div>
                                 <input type="hidden" id="input-agents">
                                 <label class="block text-xs text-gray-400 mt-2 mb-1">인물 카테고리 (복수 선택 가능)</label>
-                                <select id="input-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
+                                <div id="input-category-buttons" class="category-button-grid" role="group" aria-label="카테고리 선택"></div><select id="input-categories" multiple class="hidden"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
                                 <div class="flex gap-1 mt-1"><input id="custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('input-categories','custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button><button type="button" onclick="deleteSelectedCategory('input-categories')" class="bg-red-900 px-2 rounded text-[11px]">선택 삭제</button></div>
                             </div>
                             <button type="submit" class="bg-valRed hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition flex items-center justify-center gap-1.5">
@@ -482,7 +490,7 @@
 
     <!-- Modal for Edit Player -->
     <div id="edit-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-valCard border border-gray-700 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div class="bg-valCard border border-gray-700 rounded-xl max-w-5xl w-full p-6 shadow-2xl">
             <div class="flex justify-between items-center border-b border-gray-800 pb-3">
                 <h3 class="text-base font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-valCyan"></i> 선수 항목 수정
@@ -490,7 +498,7 @@
                 <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
-            <form onsubmit="handleSaveEditPlayer(event)" class="space-y-4">
+            <form onsubmit="handleSaveEditPlayer(event)">
                 <input type="hidden" id="edit-id">
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">이름</label>
@@ -533,7 +541,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">인물 카테고리 (복수 선택 가능)</label>
-                    <select id="edit-categories" multiple size="4" class="w-full bg-gray-950 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-white"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
+                    <div id="edit-category-buttons" class="category-button-grid" role="group" aria-label="카테고리 선택"></div><select id="edit-categories" multiple class="hidden"><option>IGL</option><option>FLEX</option><option>타격대</option><option>척후대</option><option>감시자</option><option>전략가</option><option>오퍼레이터</option></select>
                     <div class="flex gap-1 mt-1"><input id="edit-custom-category" placeholder="새 카테고리 추가" class="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-white"><button type="button" onclick="addCustomCategory('edit-categories','edit-custom-category')" class="bg-gray-700 px-2 rounded text-[11px]">추가</button><button type="button" onclick="deleteSelectedCategory('edit-categories')" class="bg-red-900 px-2 rounded text-[11px]">선택 삭제</button></div>
                 </div>
 
@@ -898,10 +906,30 @@
             if(error){console.error(error);showToast('저장 실패: '+error.message);}
         }
         function saveData(){ persistState(); }
-        function populateCategorySelects(){ ['input-categories','edit-categories'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const selected=[...el.selectedOptions].map(o=>o.value);el.innerHTML=categoryOptions.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');[...el.options].forEach(o=>o.selected=selected.includes(o.value));}); }
+        function populateCategorySelects(){
+            ['input-categories','edit-categories'].forEach(id=>{
+                const el=document.getElementById(id); if(!el)return;
+                const selected=[...el.selectedOptions].map(o=>o.value);
+                el.innerHTML=categoryOptions.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                [...el.options].forEach(o=>o.selected=selected.includes(o.value));
+            });
+            renderCategoryButtons('input-categories','input-category-buttons');
+            renderCategoryButtons('edit-categories','edit-category-buttons');
+        }
+        function renderCategoryButtons(selectId,containerId){
+            const sel=document.getElementById(selectId),box=document.getElementById(containerId); if(!sel||!box)return;
+            const selected=[...sel.selectedOptions].map(o=>o.value);
+            box.innerHTML=categoryOptions.map(c=>`<button type="button" class="category-btn ${selected.includes(c)?'selected':''}" aria-pressed="${selected.includes(c)}" onclick="toggleCategoryButton('${selectId}','${containerId}',${JSON.stringify(c).replace(/'/g,"\\'")})">${escapeHtml(c)}</button>`).join('');
+        }
+        function toggleCategoryButton(selectId,containerId,value){
+            const sel=document.getElementById(selectId),opt=[...sel.options].find(o=>o.value===value); if(!opt)return;
+            if(opt.selected) opt.selected=false;
+            else { if([...sel.selectedOptions].length>=3){showToast('선수당 카테고리는 최대 3개까지 선택할 수 있습니다.');return;} opt.selected=true; }
+            renderCategoryButtons(selectId,containerId);
+        }
         function getSelectedCategories(id){const el=document.getElementById(id);return el?[...el.selectedOptions].map(o=>o.value).slice(0,3):[];}
-        function setSelectedCategories(id,values){const el=document.getElementById(id);if(!el)return;[...el.options].forEach(o=>o.selected=(values||[]).includes(o.value));}
-        document.addEventListener('change',e=>{if(['input-categories','edit-categories'].includes(e.target?.id)){const selected=[...e.target.selectedOptions];if(selected.length>3){selected[selected.length-1].selected=false;showToast('선수당 카테고리는 최대 3개까지 선택할 수 있습니다.');}}});
+        function setSelectedCategories(id,values){const el=document.getElementById(id);if(!el)return;[...el.options].forEach(o=>o.selected=(values||[]).includes(o.value));renderCategoryButtons(id,id==='input-categories'?'input-category-buttons':'edit-category-buttons');}
+        document.addEventListener('change',e=>{if(['input-categories','edit-categories'].includes(e.target?.id)){const selected=[...e.target.selectedOptions];if(selected.length>3){selected[selected.length-1].selected=false;showToast('선수당 카테고리는 최대 3개까지 선택할 수 있습니다.');}renderCategoryButtons(e.target.id,e.target.id==='input-categories'?'input-category-buttons':'edit-category-buttons');}});
         function deleteSelectedCategory(selectId){
             if(!isAdmin){showToast('서버 관리자 로그인 후 이용할 수 있습니다.');return;}
             const el=document.getElementById(selectId);
@@ -912,7 +940,7 @@
             players=players.map(p=>({...p,categories:(p.categories||[]).filter(c=>!chosen.includes(c))}));
             populateCategorySelects();persistState();renderAll();showToast('카테고리를 삭제했습니다.');
         }
-        function addCustomCategory(selectId,inputId){const input=document.getElementById(inputId),name=input.value.trim();if(!name)return;if(!categoryOptions.includes(name))categoryOptions.push(name);populateCategorySelects();const sel=document.getElementById(selectId);[...sel.options].forEach(o=>{if(o.value===name)o.selected=true;});input.value='';if(isAdmin)persistState();}
+        function addCustomCategory(selectId,inputId){const input=document.getElementById(inputId),name=input.value.trim();if(!name)return;if(!categoryOptions.includes(name))categoryOptions.push(name);populateCategorySelects();const sel=document.getElementById(selectId);const opt=[...sel.options].find(o=>o.value===name);if(opt){if([...sel.selectedOptions].length<3||opt.selected)opt.selected=true;else showToast('선수당 카테고리는 최대 3개까지 선택할 수 있습니다.');}renderCategoryButtons(selectId,selectId==='input-categories'?'input-category-buttons':'edit-category-buttons');input.value='';if(isAdmin)persistState();}
         window.onload = async function() {
             renderRankButtons(); loadRankAssets(); await initCloud();
             await loadAgentAssets(); renderAll(); updateAddPowerScore();
