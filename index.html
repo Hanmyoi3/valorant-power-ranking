@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WTM · Well-balanced Team Maker</title>
+    <title>PB팀메이커 · PowerScore Balanced Team Maker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (xlsx) for Excel processing -->
@@ -205,18 +205,19 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                        WTM · Well-balanced Team Maker
+                        PB팀메이커 · PowerScore Balanced Team Maker
                     </h1>
-                    <p class="text-xs text-gray-400">VALORANT CUSTOM GAME · BALANCED TEAM MAKER</p>
+                    <p class="text-xs text-gray-400">POWERSCORE · BALANCED TEAM MAKER</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 ml-auto">
                 <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
-                <button id="server-list-toggle" onclick="toggleServerList()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2">서버 목록 보기</button>
+                <button id="server-list-toggle" onclick="toggleServerList()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2">서버 관리</button>
                 <button id="create-server-btn" onclick="createDiscordServer()" class="hidden bg-valRed hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">+ 서버 생성</button>
                 <button id="server-login-btn" onclick="serverAdminLogin()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 관리자 로그인</button>
-                <button id="server-password-btn" onclick="changeDiscordServerPassword()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">비밀번호 변경</button>
-                <button id="admin-mode-btn" onclick="openAdminModal()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-lock mr-1"></i> 관리자 모드</button>
+                <button id="server-password-btn" onclick="changeDiscordServerPassword()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 비밀번호 변경</button>
+                <button id="server-profile-btn" onclick="editServerProfile()" class="hidden bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 프로필 수정</button>
+                <button id="admin-mode-btn" onclick="openAdminModal()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-shield-halved mr-1"></i> 전체 관리자</button>
                 <button id="admin-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 hover:bg-red-900 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">로그아웃</button>
             </div>
             <!-- Navigation Tabs -->
@@ -539,7 +540,7 @@
 
     <!-- Footer -->
     <footer class="border-t border-gray-800 bg-gray-950 py-4 text-center text-xs text-gray-500">
-        WTM · Well-balanced Team Maker <span class="mx-2">|</span> Made by 한묘 <span class="inline-flex items-center gap-1 ml-1"><i class="fa-brands fa-discord"></i> han_myo</span>
+        PB팀메이커 · PowerScore Balanced Team Maker <span class="mx-2">|</span> Made by 한묘 <span class="inline-flex items-center gap-1 ml-1"><i class="fa-brands fa-discord"></i> han_myo</span>
     </footer>
 
     <!-- Notification Toast -->
@@ -736,10 +737,11 @@
             document.body.classList.toggle('is-admin', isAdmin);
             document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
             document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
-            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '사이트 관리자' : serverAdmin ? '서버 관리자 · 온라인 저장' : '서버 비밀번호 필요') : 'Supabase 설정 필요';
+            document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '전체 관리자 · 모든 서버 접근 가능' : serverAdmin ? '서버 관리자 · 현재 서버만 관리' : '서버 비밀번호 필요') : 'Supabase 설정 필요';
             document.getElementById('create-server-btn').classList.toggle('hidden', !globalAdmin);
             document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin);
             document.getElementById('server-password-btn').classList.toggle('hidden', !serverAdmin);
+            document.getElementById('server-profile-btn').classList.toggle('hidden', !(globalAdmin && activeServerId));
             document.querySelectorAll('#team-a-name,#team-b-name').forEach(el => el.readOnly = !isAdmin);
             renderAll();
         }
@@ -756,12 +758,12 @@
             document.getElementById('admin-password').value='';
             await refreshAdminStatus(); closeAdminModal(); showToast(isAdmin?'관리자 로그인 성공':'관리자 권한이 등록되지 않은 계정입니다.');
         }
-        async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); isAdmin=false;currentUser=null;updateAdminUI();showToast('로그아웃했습니다.'); }
+        async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); globalAdmin=false;serverAdmin=false;activeServerPassword='';isAdmin=false;currentUser=null;updateAdminUI();showToast('관리자 로그아웃했습니다.'); }
         async function refreshAdminStatus(){
             if(!dbClient)return; const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
             if(!user){globalAdmin=false;isAdmin=serverAdmin;updateAdminUI();return;}
             const {data,error}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
-            globalAdmin=!!data&&!error; isAdmin=serverAdmin; updateAdminUI();
+            globalAdmin=!!data&&!error; isAdmin=globalAdmin||serverAdmin; updateAdminUI();
         }
         async function initCloud(){
             const url=window.SUPABASE_URL, key=window.SUPABASE_ANON_KEY;
@@ -781,7 +783,8 @@
             if(!grid)return;
             grid.innerHTML=discordServers.length?discordServers.map(x=>`
                 <button onclick="switchDiscordServer('${x.id}')" class="text-left rounded-xl border ${activeServerId===x.id?'border-valRed bg-red-950/30':'border-gray-700 bg-gray-900'} p-4 hover:border-valRed transition">
-                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">비밀번호로 입장</div></div></div>
+                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">${globalAdmin?'전체 관리자 권한으로 접근 가능':'비밀번호로 입장'}</div></div></div>
+                    ${globalAdmin?`<div class="flex gap-2 mt-3"><span onclick="event.stopPropagation();switchDiscordServer('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">열기</span><span onclick="event.stopPropagation();renameServerFromCard('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">이름 수정</span><span onclick="event.stopPropagation();deleteDiscordServer('${x.id}')" class="text-xs rounded bg-red-950 px-2 py-1 text-red-300">삭제</span></div>`:''}
                 </button>`).join(''):'<p class="text-gray-500 text-sm">등록된 서버가 없습니다.</p>';
         }
         async function loadDiscordServers(preferredId=''){
@@ -798,23 +801,48 @@
             if(!id)return;
             const target=discordServers.find(x=>x.id===id);
             if(!target)return;
-            const pw=prompt(`"${target.name}" 서버 입장 비밀번호를 입력하세요.`);
+            const pw=globalAdmin?'':prompt(`"${target.name}" 서버 입장 비밀번호를 입력하세요.`);
             if(pw===null)return;
             const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id,p_password:pw});
             if(error||!data){showToast('비밀번호가 틀렸거나 서버 데이터를 불러오지 못했습니다.');return;}
-            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=false;
+            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
             applyAppState(data||{});
             document.getElementById('app-main').classList.remove('hidden');
             toggleServerList(false);
             updateAdminUI(); renderServerCards();
-            showToast('서버에 입장했습니다. 관리자라면 관리자 로그인을 추가로 진행해 주세요.');
+            showToast(globalAdmin?'전체 관리자 권한으로 서버에 입장했습니다.':'서버에 입장했습니다. 이 서버를 관리하려면 서버 관리자 로그인이 필요합니다.');
         }
         async function serverAdminLogin(){
             if(!activeServerId){showToast('먼저 서버 목록에서 서버를 선택해 주세요.');return;}
             const pw=prompt('이 서버의 관리자 비밀번호를 입력하세요.');if(!pw)return;
             const {data,error}=await dbClient.rpc('verify_server_password',{p_server_id:activeServerId,p_password:pw});
             if(error||!data){showToast('서버 비밀번호가 올바르지 않습니다.');return;}
-            activeServerPassword=pw;serverAdmin=true;isAdmin=true;updateAdminUI();showToast('서버 관리자 로그인 성공');
+            activeServerPassword=pw;serverAdmin=true;isAdmin=true;updateAdminUI();showToast('현재 서버 관리자 로그인 성공');
+        }
+        async function renameServerFromCard(id){
+            if(!globalAdmin)return;const target=discordServers.find(x=>x.id===id);if(!target)return;
+            const name=prompt('새 서버 이름을 입력하세요. (1~60자)',target.name);if(name===null)return;const clean=name.trim();
+            if(!clean||clean.length>60){showToast('서버 이름은 1~60자로 입력해 주세요.');return;}
+            const {error}=await dbClient.rpc('rename_discord_server',{p_server_id:id,p_name:clean});
+            if(error){showToast('이름 수정 실패: '+error.message);return;}await loadDiscordServers(activeServerId);showToast('서버 이름을 수정했습니다.');
+        }
+        async function editServerProfile(){
+            if(!globalAdmin||!activeServerId){showToast('전체 관리자 로그인 후 서버를 선택해 주세요.');return;}
+            const current=discordServers.find(x=>x.id===activeServerId);if(!current)return;
+            const name=prompt('서버 프로필 이름을 수정하세요. (1~60자)',current.name);if(name===null)return;
+            const clean=name.trim();if(!clean||clean.length>60){showToast('서버 이름은 1~60자로 입력해 주세요.');return;}
+            const {error}=await dbClient.rpc('rename_discord_server',{p_server_id:activeServerId,p_name:clean});
+            if(error){showToast('서버 이름 수정 실패: '+error.message);return;}
+            showToast('서버 프로필 이름을 수정했습니다.');await loadDiscordServers(activeServerId);
+        }
+        async function deleteDiscordServer(id){
+            if(!globalAdmin){showToast('전체 관리자만 서버를 삭제할 수 있습니다.');return;}
+            const target=discordServers.find(x=>x.id===id);if(!target)return;
+            if(!confirm(`"${target.name}" 서버와 모든 서버 데이터를 삭제할까요? 이 작업은 되돌릴 수 없습니다.`))return;
+            const {error}=await dbClient.rpc('delete_discord_server',{p_server_id:id});
+            if(error){showToast('서버 삭제 실패: '+error.message);return;}
+            if(activeServerId===id){activeServerId='';activeServerPassword='';serverAdmin=false;applyAppState({});document.getElementById('app-main').classList.add('hidden');}
+            showToast('서버를 삭제했습니다.');await loadDiscordServers();
         }
         async function createDiscordServer(){
             if(!globalAdmin){showToast('사이트 관리자만 서버를 생성할 수 있습니다.');return;}
@@ -841,7 +869,7 @@
         function collectAppState(){return {players,teamNames,categoryOptions,updatedAt:new Date().toISOString()};}
         async function persistState(){
             if(!dbClient||!isAdmin||!activeServerId)return;
-            const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:activeServerPassword,p_data:collectAppState()});
+            const {error}=await dbClient.rpc('save_server_state',{p_server_id:activeServerId,p_password:globalAdmin?'':activeServerPassword,p_data:collectAppState()});
             if(error){console.error(error);showToast('저장 실패: '+error.message);}
         }
         function saveData(){ persistState(); }

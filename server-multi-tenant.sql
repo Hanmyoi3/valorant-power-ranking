@@ -36,7 +36,8 @@ $$;
 create or replace function public.save_server_state(p_server_id uuid, p_password text, p_data jsonb)
 returns void language plpgsql security definer set search_path = public, extensions, auth as $$
 begin
-  if not exists(select 1 from public.discord_servers where id=p_server_id and password_hash=extensions.crypt(p_password,password_hash)) then
+  if not exists (select 1 from public.admin_users where user_id = auth.uid())
+     and not exists(select 1 from public.discord_servers where id=p_server_id and password_hash=extensions.crypt(coalesce(p_password,''),password_hash)) then
     raise exception '해당 서버의 비밀번호가 올바르지 않습니다.';
   end if;
   update public.discord_servers set data=p_data, updated_at=now() where id=p_server_id;
@@ -63,13 +64,12 @@ set search_path = public, extensions
 as $$
 declare result jsonb;
 begin
-  select data into result
-  from public.discord_servers
-  where id = p_server_id
-    and password_hash = extensions.crypt(p_password, password_hash);
-  if result is null then
-    raise exception '서버 비밀번호가 올바르지 않습니다.';
+  if exists (select 1 from public.admin_users where user_id = auth.uid()) then
+    select data into result from public.discord_servers where id = p_server_id;
+  else
+    select data into result from public.discord_servers where id = p_server_id and password_hash = extensions.crypt(coalesce(p_password,''), password_hash);
   end if;
+  if result is null then raise exception '서버 비밀번호가 올바르지 않거나 서버가 없습니다.'; end if;
   return result;
 end; $$;
 
@@ -80,3 +80,31 @@ grant execute on function public.create_discord_server(text,text) to authenticat
 grant execute on function public.verify_server_password(uuid,text) to anon, authenticated;
 grant execute on function public.save_server_state(uuid,text,jsonb) to anon, authenticated;
 grant execute on function public.change_server_password(uuid,text,text) to anon, authenticated;
+
+
+-- 전체 관리자 전용: 서버 이름 변경 및 서버 삭제
+create or replace function public.rename_discord_server(p_server_id uuid, p_name text)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then
+    raise exception '전체 관리자 권한이 필요합니다.';
+  end if;
+  if length(trim(p_name)) < 1 or length(trim(p_name)) > 60 then
+    raise exception '서버 이름은 1~60자로 입력해 주세요.';
+  end if;
+  update public.discord_servers set name=trim(p_name), updated_at=now() where id=p_server_id;
+  if not found then raise exception '서버를 찾을 수 없습니다.'; end if;
+end; $$;
+
+create or replace function public.delete_discord_server(p_server_id uuid)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then
+    raise exception '전체 관리자 권한이 필요합니다.';
+  end if;
+  delete from public.discord_servers where id=p_server_id;
+  if not found then raise exception '서버를 찾을 수 없습니다.'; end if;
+end; $$;
+
+grant execute on function public.rename_discord_server(uuid,text) to authenticated;
+grant execute on function public.delete_discord_server(uuid) to authenticated;
