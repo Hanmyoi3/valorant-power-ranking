@@ -221,8 +221,8 @@
             <div class="flex items-center gap-2 ml-auto">
                 <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
                 <span id="account-nickname" class="text-xs text-gray-300"></span>
-                <button id="account-login-btn" onclick="openAdminModal()" class="bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Google 로그인</button>
-                <button id="account-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Google 로그아웃</button>
+                <button id="account-login-btn" onclick="openAdminModal()" class="bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Discord 로그인</button>
+                <button id="account-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Discord 로그아웃</button>
                 <button id="server-list-toggle" onclick="toggleServerList()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2">서버 관리</button>
                 <button id="create-server-btn" onclick="createDiscordServer()" class="hidden bg-valRed hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">+ 서버 생성</button>
                 <button id="server-login-btn" onclick="serverAdminLogin()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 관리자 로그인</button>
@@ -485,12 +485,12 @@
 
     <div id="admin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center hidden p-4">
         <div class="bg-valCard border border-gray-700 rounded-xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center"><h3 class="text-white font-black">Google 계정 로그인</h3><button onclick="closeAdminModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
-            <p class="text-xs text-gray-400">Google 계정으로 가입 및 로그인하세요. 최초 로그인 시 닉네임을 설정합니다.</p>
+            <div class="flex justify-between items-center"><h3 class="text-white font-black">Discord 계정 로그인</h3><button onclick="closeAdminModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <p class="text-xs text-gray-400">Discord 계정으로 가입 및 로그인하세요. 최초 로그인 시 닉네임을 설정합니다.</p>
             <input id="admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm text-white">
             
-            <button type="button" onclick="googleLogin()" class="w-full bg-white hover:bg-gray-200 rounded py-2 text-gray-900 font-bold text-sm flex items-center justify-center gap-2"><i class="fa-brands fa-google"></i> Google 계정으로 로그인</button>
-            <p class="text-[10px] text-gray-500">서버 생성은 Google 계정당 1개만 가능합니다. 로그인 상태는 브라우저에 유지됩니다.</p>
+            <button type="button" onclick="discordLogin()" class="w-full bg-white hover:bg-gray-200 rounded py-2 text-gray-900 font-bold text-sm flex items-center justify-center gap-2"><i class="fa-brands fa-discord"></i> Discord 계정으로 로그인</button>
+            <p class="text-[10px] text-gray-500">서버 생성은 Discord 계정당 1개만 가능합니다. 로그인 상태는 브라우저에 유지됩니다.</p>
             <p class="text-[10px] text-gray-500">비밀번호는 사이트 코드에 저장되지 않으며 Supabase 인증으로 확인됩니다.</p>
         </div>
     </div>
@@ -818,10 +818,10 @@
             document.getElementById('admin-password').value='';
             await refreshAdminStatus(); closeAdminModal(); showToast(isAdmin?'관리자 로그인 성공':'관리자 권한이 등록되지 않은 계정입니다.');
         }
-        async function googleLogin(){
+        async function discordLogin(){
             if(!dbClient){showToast('Supabase 설정을 먼저 완료해 주세요.');return;}
-            const {error}=await dbClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
-            if(error) showToast('Google 로그인 실패: '+error.message);
+            const {error}=await dbClient.auth.signInWithOAuth({provider:'discord',options:{redirectTo:window.location.origin}});
+            if(error) showToast('Discord 로그인 실패: '+error.message);
         }
         async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); globalAdmin=false;serverAdmin=false;activeServerPassword='';isAdmin=false;currentUser=null;updateAdminUI();showToast('로그아웃했습니다.'); }
         async function refreshAdminStatus(){
@@ -900,7 +900,7 @@
             showToast('서버에 입장했습니다.');
         }
         async function joinDiscordServer(id){
-            if(!currentUser){showToast('먼저 Google 계정으로 로그인해 주세요.');openAdminModal();return;}
+            if(!currentUser){showToast('먼저 Discord 계정으로 로그인해 주세요.');openAdminModal();return;}
             const target=discordServers.find(x=>x.id===id); if(!target)return;
             let pw=''; if(!target.is_public){pw=prompt('비공개 서버 가입 비밀번호를 입력하세요.');if(pw===null)return;}
             const {error}=await dbClient.rpc('join_discord_server',{p_server_id:id,p_view_password:pw});
@@ -955,7 +955,7 @@
             showToast('서버를 삭제했습니다.');await loadDiscordServers();
         }
         async function createDiscordServer(){
-            if(!currentUser){showToast('서버 생성은 Google 로그인 후 가능합니다.');openAdminModal();return;}
+            if(!currentUser){showToast('서버 생성은 Discord 로그인 후 가능합니다.');openAdminModal();return;}
             if(discordServers.some(x=>x.owner_id===currentUser.id)){showToast('계정당 서버는 1개만 생성할 수 있습니다.');return;}
             const name=prompt('새 서버 이름을 입력하세요.');if(!name)return;
             const adminPw=prompt('서버 관리자 비밀번호를 설정하세요. (8자 이상)');if(!adminPw)return;
