@@ -220,16 +220,12 @@
             </div>
             <div class="flex items-center gap-2 ml-auto">
                 <span id="cloud-status" class="text-[10px] text-gray-500">서버 연결 확인 중</span>
-                <span id="account-nickname" class="text-xs text-gray-300"></span>
-                <button id="account-login-btn" onclick="openAdminModal()" class="bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Discord 로그인</button>
-                <button id="account-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Discord 로그아웃</button>
                 <button id="server-list-toggle" onclick="toggleServerList()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-lg px-3 py-2">서버 관리</button>
                 <button id="create-server-btn" onclick="createDiscordServer()" class="hidden bg-valRed hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">+ 서버 생성</button>
                 <button id="server-login-btn" onclick="serverAdminLogin()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 관리자 로그인</button>
                 <button id="server-password-btn" onclick="changeDiscordServerPassword()" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 비밀번호 변경</button>
-                <button id="server-members-btn" onclick="manageServerMembers(activeServerId)" class="hidden bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">참여자 관리</button>
                 <button id="server-profile-btn" onclick="editServerProfile()" class="hidden bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">서버 프로필 수정</button>
-                <button id="admin-mode-btn" onclick="openAdminModal()" class="hidden bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-shield-halved mr-1"></i> 전체 관리자</button>
+                <button id="admin-mode-btn" onclick="openAdminModal()" class="bg-gray-800 hover:bg-valRed border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-shield-halved mr-1"></i> 전체 관리자</button>
                 <button id="admin-logout-btn" onclick="adminLogout()" class="hidden bg-gray-800 hover:bg-red-900 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-lg">로그아웃</button>
             </div>
             <!-- Navigation Tabs -->
@@ -249,7 +245,6 @@
 
     <section id="server-list-panel" class="hidden max-w-7xl mx-auto px-4 pt-5 w-full">
         <div class="flex items-center justify-between mb-3"><h2 class="text-white font-black">Discord 서버 선택</h2><button onclick="toggleServerList(false)" class="text-gray-400 text-xs">닫기 ✕</button></div>
-        <div class="flex flex-col sm:flex-row gap-2 mb-4"><input id="server-search" oninput="renderServerCards()" placeholder="서버 이름 검색..." class="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"><span class="text-xs text-gray-500 self-center">공개 서버는 바로 열람, 비공개 서버는 열람 비밀번호 필요</span></div>
         <div id="server-card-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
     </section>
 
@@ -485,12 +480,10 @@
 
     <div id="admin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center hidden p-4">
         <div class="bg-valCard border border-gray-700 rounded-xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center"><h3 class="text-white font-black">Discord 계정 로그인</h3><button onclick="closeAdminModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
-            <p class="text-xs text-gray-400">Discord 계정으로 가입 및 로그인하세요. 최초 로그인 시 닉네임을 설정합니다.</p>
+            <div class="flex justify-between items-center"><h3 class="text-white font-black">관리자 로그인</h3><button onclick="closeAdminModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <p class="text-xs text-gray-400">관리자 계정의 이메일과 비밀번호로 로그인하세요.</p>
             <input id="admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" class="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm text-white">
-            
-            <button type="button" onclick="discordLogin()" class="w-full bg-white hover:bg-gray-200 rounded py-2 text-gray-900 font-bold text-sm flex items-center justify-center gap-2"><i class="fa-brands fa-discord"></i> Discord 계정으로 로그인</button>
-            <p class="text-[10px] text-gray-500">서버 생성은 Discord 계정당 1개만 가능합니다. 로그인 상태는 브라우저에 유지됩니다.</p>
+            <button onclick="adminLogin()" class="w-full bg-valRed hover:bg-red-600 rounded py-2 text-white font-bold text-sm">로그인</button>
             <p class="text-[10px] text-gray-500">비밀번호는 사이트 코드에 저장되지 않으며 Supabase 인증으로 확인됩니다.</p>
         </div>
     </div>
@@ -568,7 +561,7 @@
           <label class="text-xs text-gray-400">경기명 / 상대<input id="history-opponent" type="text" placeholder="예: 금요일 내전" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded p-2 text-white"></label>
           <label class="text-xs text-gray-400">결과<select id="history-result" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded p-2 text-white"><option value="win">승리</option><option value="loss">패배</option></select></label>
           <label class="text-xs text-gray-400">해당 경기 ACS<input id="history-acs" type="number" min="0" step="0.1" placeholder="예: 245" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded p-2 text-white"></label>
-          <button id="history-submit-btn" type="button" onclick="savePlayerMatchHistory()" class="self-end bg-valRed hover:bg-red-600 rounded p-2 text-white text-sm font-bold">전적 추가</button>
+          <button type="button" onclick="addPlayerMatchHistory()" class="self-end bg-valRed hover:bg-red-600 rounded p-2 text-white text-sm font-bold">전적 추가</button>
         </div>
         <div id="history-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4"></div><div id="history-list" class="space-y-2"></div>
       </div>
@@ -777,7 +770,7 @@
 
         let teamNames = { A: '팀 1', B: '팀 2' };
         let dbClient = null, isAdmin = false, currentUser = null, cloudReady = false;
-        let globalAdmin = false, serverAdmin = false, activeServerId = '', activeServerPassword = '', discordServers = [], profileNickname = '', activeServerMeta = null; 
+        let globalAdmin = false, serverAdmin = false, activeServerId = '', activeServerPassword = '', discordServers = []; 
         let appState = { players: [], teamNames: {A:'팀 1',B:'팀 2'} };
         const DEFAULT_CATEGORIES = ['IGL','FLEX','타격대','척후대','감시자','전략가','오퍼레이터'];
         let categoryOptions = [...DEFAULT_CATEGORIES];
@@ -792,16 +785,12 @@
         function updateAdminUI() {
             document.body.classList.toggle('is-admin', isAdmin);
             document.getElementById('admin-mode-btn').classList.toggle('hidden', isAdmin);
-            document.getElementById('admin-logout-btn').classList.add('hidden');
+            document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdmin);
             document.getElementById('cloud-status').textContent = cloudReady ? (globalAdmin ? '전체 관리자 · 모든 서버 및 마스터 권한' : serverAdmin ? '서버 관리자 · 현재 서버만 수정 가능' : '공개 열람 · 수정은 서버 비밀번호 필요') : 'Supabase 설정 필요';
-            document.getElementById('create-server-btn').classList.toggle('hidden', !currentUser || !!discordServers.some(x=>x.owner_id===currentUser.id));
-            document.getElementById('account-login-btn').classList.toggle('hidden', !!currentUser);
-            document.getElementById('account-logout-btn').classList.toggle('hidden', !currentUser);
-            document.getElementById('account-nickname').textContent = currentUser ? (profileNickname || currentUser.email || '') : '';
-            document.getElementById('server-members-btn')?.classList.toggle('hidden', !(activeServerId && (serverAdmin || globalAdmin)));
+            document.getElementById('create-server-btn').classList.toggle('hidden', !globalAdmin);
             document.getElementById('server-login-btn').classList.toggle('hidden', serverAdmin);
             document.getElementById('server-password-btn').classList.toggle('hidden', !serverAdmin);
-            document.getElementById('server-profile-btn').classList.toggle('hidden', !(activeServerId && (globalAdmin || serverAdmin)));
+            document.getElementById('server-profile-btn').classList.toggle('hidden', !(globalAdmin && activeServerId));
             document.querySelectorAll('#team-a-name,#team-b-name').forEach(el => el.readOnly = !isAdmin);
             renderAll();
         }
@@ -818,36 +807,17 @@
             document.getElementById('admin-password').value='';
             await refreshAdminStatus(); closeAdminModal(); showToast(isAdmin?'관리자 로그인 성공':'관리자 권한이 등록되지 않은 계정입니다.');
         }
-        async function discordLogin(){
-            if(!dbClient){showToast('Supabase 설정을 먼저 완료해 주세요.');return;}
-            const {error}=await dbClient.auth.signInWithOAuth({provider:'discord',options:{redirectTo:window.location.origin}});
-            if(error) showToast('Discord 로그인 실패: '+error.message);
-        }
-        async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); globalAdmin=false;serverAdmin=false;activeServerPassword='';isAdmin=false;currentUser=null;updateAdminUI();showToast('로그아웃했습니다.'); }
+        async function adminLogout(){ if(dbClient) await dbClient.auth.signOut(); globalAdmin=false;serverAdmin=false;activeServerPassword='';isAdmin=false;currentUser=null;updateAdminUI();showToast('관리자 로그아웃했습니다.'); }
         async function refreshAdminStatus(){
-            if(!dbClient)return;
-            const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
-            globalAdmin=false; profileNickname='';
-            if(user){
-                const {data:admin}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
-                globalAdmin=!!admin;
-                const {data:profile}=await dbClient.from('user_profiles').select('nickname').eq('user_id',user.id).maybeSingle();
-                profileNickname=profile?.nickname||'';
-                if(!profileNickname){
-                    let nick='';
-                    while(!nick){ nick=(prompt('PB팀메이커에서 사용할 닉네임을 정해주세요. (2~20자)')||'').trim(); if(!nick)return; if(nick.length<2||nick.length>20){showToast('닉네임은 2~20자로 입력해 주세요.');nick='';} }
-                    const {error}=await dbClient.rpc('set_my_nickname',{p_nickname:nick});
-                    if(error){showToast('닉네임 저장 실패: '+error.message);return;}
-                    profileNickname=nick;
-                }
-            }
-            isAdmin=globalAdmin||serverAdmin; updateAdminUI();
+            if(!dbClient)return; const {data:{user}}=await dbClient.auth.getUser(); currentUser=user;
+            if(!user){globalAdmin=false;isAdmin=serverAdmin;updateAdminUI();return;}
+            const {data,error}=await dbClient.from('admin_users').select('user_id').eq('user_id',user.id).maybeSingle();
+            globalAdmin=!!data&&!error; isAdmin=globalAdmin||serverAdmin; updateAdminUI();
         }
         async function initCloud(){
             const url=window.SUPABASE_URL, key=window.SUPABASE_ANON_KEY;
             if(!url||!key||url.includes('YOUR_')||key.includes('YOUR_')){cloudReady=false;updateAdminUI();showToast('Supabase 설정 파일을 먼저 작성해야 합니다.');return;}
-            dbClient=window.supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); cloudReady=true;
-            dbClient.auth.onAuthStateChange(async (event,session)=>{ if(event==='SIGNED_IN'||event==='SIGNED_OUT'){ setTimeout(async()=>{ await refreshAdminStatus(); await loadDiscordServers(); },0); } });
+            dbClient=window.supabase.createClient(url,key); cloudReady=true;
             await refreshAdminStatus();
             await loadDiscordServers();
         }
@@ -858,61 +828,43 @@
             if(show) renderServerCards();
         }
         function renderServerCards(){
-            const grid=document.getElementById('server-card-grid'); if(!grid)return;
-            const q=(document.getElementById('server-search')?.value||'').trim().toLowerCase();
-            const rows=discordServers.filter(x=>String(x.name||'').toLowerCase().includes(q));
-            grid.innerHTML=rows.length?rows.map(x=>{
-                const isOwner=currentUser&&x.owner_id===currentUser.id;
-                const canManage=globalAdmin||isOwner||x.my_role==='admin'||x.my_role==='owner';
-                const img=x.profile_image_url?`<img src="${escapeHtml(x.profile_image_url)}" class="w-12 h-12 rounded-lg object-cover" onerror="this.style.display='none'">`:`<div class="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div>`;
-                return `<article class="rounded-xl border ${activeServerId===x.id?'border-valRed bg-red-950/20':'border-gray-700 bg-gray-900'} p-4">
-                    <button onclick="switchDiscordServer('${x.id}')" class="w-full text-left"><div class="flex items-center gap-3">${img}<div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">${x.is_public?'공개 서버':'🔒 비공개 서버'} · ${Number(x.member_count||0)}명 참여</div></div></div></button>
-                    <div class="flex flex-wrap gap-2 mt-3"><button onclick="switchDiscordServer('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">${x.is_public?'열람':'비밀번호로 열람'}</button>
-                    ${currentUser&&!isOwner?`<button onclick="joinDiscordServer('${x.id}')" class="text-xs rounded bg-cyan-950 px-2 py-1 text-cyan-200">서버 가입</button>`:''}
-                    ${canManage?`<button onclick="editServerProfile('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">프로필/보안 설정</button><button onclick="manageServerMembers('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">참여자 관리</button>`:''}
-                    ${globalAdmin?`<button onclick="deleteDiscordServer('${x.id}')" class="text-xs rounded bg-red-950 px-2 py-1 text-red-300">삭제</button>`:''}</div></article>`;
-            }).join(''):'<p class="text-gray-500 text-sm">검색 결과가 없습니다.</p>';
+            const grid=document.getElementById('server-card-grid');
+            if(!grid)return;
+            grid.innerHTML=discordServers.length?discordServers.map(x=>`
+                <button onclick="switchDiscordServer('${x.id}')" class="text-left rounded-xl border ${activeServerId===x.id?'border-valRed bg-red-950/30':'border-gray-700 bg-gray-900'} p-4 hover:border-valRed transition">
+                    <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-lg bg-gray-800 flex items-center justify-center text-xl"><i class="fa-brands fa-discord"></i></div><div class="min-w-0"><div class="text-white font-black truncate">${escapeHtml(x.name)}</div><div class="text-[11px] text-gray-400 mt-1">${globalAdmin?'전체 관리자 권한으로 접근 가능':'누구나 열람 가능'}</div></div></div>
+                    ${globalAdmin?`<div class="flex gap-2 mt-3"><span onclick="event.stopPropagation();switchDiscordServer('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">열기</span><span onclick="event.stopPropagation();renameServerFromCard('${x.id}')" class="text-xs rounded bg-gray-800 px-2 py-1 text-gray-200">이름 수정</span><span onclick="event.stopPropagation();deleteDiscordServer('${x.id}')" class="text-xs rounded bg-red-950 px-2 py-1 text-red-300">삭제</span></div>`:''}
+                </button>`).join(''):'<p class="text-gray-500 text-sm">등록된 서버가 없습니다.</p>';
         }
         async function loadDiscordServers(preferredId=''){
-            const {data,error}=await dbClient.from('discord_server_list').select('*').order('created_at');
-            if(error){console.error(error);showToast('서버 목록을 불러오지 못했습니다: '+error.message);return;}
+            const {data,error}=await dbClient.from('discord_server_list').select('id,name').order('created_at');
+            if(error){console.error(error);showToast('서버 목록을 불러오지 못했습니다.');return;}
             discordServers=data||[];
-            if(currentUser){
-                const {data:mine}=await dbClient.from('server_members').select('server_id,role').eq('user_id',currentUser.id);
-                const roles=Object.fromEntries((mine||[]).map(m=>[m.server_id,m.role]));
-                discordServers=discordServers.map(x=>({...x,my_role:roles[x.id]||null}));
-            }
             renderServerCards();
             const target=preferredId||activeServerId;
-            if(target && discordServers.some(x=>x.id===target)) activeServerId=target;
+            if(target && discordServers.some(x=>x.id===target)) { activeServerId=target; }
             else { activeServerId=''; applyAppState({}); isAdmin=false; document.getElementById('app-main').classList.add('hidden'); toggleServerList(true); }
             updateAdminUI();
         }
         async function switchDiscordServer(id){
-            if(!id)return; const target=discordServers.find(x=>x.id===id); if(!target)return;
-            let viewPw='';
-            if(!target.is_public){ viewPw=prompt('비공개 서버 열람 비밀번호를 입력하세요.'); if(viewPw===null)return; }
-            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id,p_view_password:viewPw});
-            if(error||!data){showToast(error?.message||'서버를 열람할 수 없습니다.');return;}
-            activeServerId=id; activeServerMeta=target; activeServerPassword=''; serverAdmin=false;
-            const role=target.my_role; serverAdmin=!!(role==='owner'||role==='admin'); isAdmin=globalAdmin||serverAdmin;
-            applyAppState(data||{}); document.getElementById('app-main').classList.remove('hidden'); toggleServerList(false); updateAdminUI(); renderServerCards();
-            showToast('서버에 입장했습니다.');
-        }
-        async function joinDiscordServer(id){
-            if(!currentUser){showToast('먼저 Discord 계정으로 로그인해 주세요.');openAdminModal();return;}
-            const target=discordServers.find(x=>x.id===id); if(!target)return;
-            let pw=''; if(!target.is_public){pw=prompt('비공개 서버 가입 비밀번호를 입력하세요.');if(pw===null)return;}
-            const {error}=await dbClient.rpc('join_discord_server',{p_server_id:id,p_view_password:pw});
-            if(error){showToast('서버 가입 실패: '+error.message);return;}
-            showToast('서버에 가입했습니다.');await loadDiscordServers();
+            if(!id)return;
+            const target=discordServers.find(x=>x.id===id);
+            if(!target)return;
+            const {data,error}=await dbClient.rpc('get_server_state',{p_server_id:id});
+            if(error||!data){showToast('비밀번호가 틀렸거나 서버 데이터를 불러오지 못했습니다.');return;}
+            activeServerId=id; activeServerPassword=''; serverAdmin=false; isAdmin=globalAdmin;
+            applyAppState(data||{});
+            document.getElementById('app-main').classList.remove('hidden');
+            toggleServerList(false);
+            updateAdminUI(); renderServerCards();
+            showToast(globalAdmin?'전체 관리자 권한으로 서버에 입장했습니다.':'누구나 열람할 수 있습니다. 수정하려면 서버 관리자 로그인을 해주세요.');
         }
         async function serverAdminLogin(){
             if(!activeServerId){showToast('먼저 서버 목록에서 서버를 선택해 주세요.');return;}
             const pw=prompt('이 서버의 관리자 비밀번호를 입력하세요.');if(!pw)return;
             const {data,error}=await dbClient.rpc('verify_server_password',{p_server_id:activeServerId,p_password:pw});
             if(error||!data){showToast('서버 비밀번호가 올바르지 않습니다.');return;}
-            activeServerPassword=pw;serverAdmin=true;isAdmin=true;const row=discordServers.find(x=>x.id===activeServerId);if(row)row.my_role='admin';updateAdminUI();await loadDiscordServers(activeServerId);showToast('서버 관리자 로그인 성공');
+            activeServerPassword=pw;serverAdmin=true;isAdmin=true;updateAdminUI();showToast('현재 서버 관리자 로그인 성공');
         }
         async function renameServerFromCard(id){
             if(!globalAdmin)return;const target=discordServers.find(x=>x.id===id);if(!target)return;
@@ -921,29 +873,14 @@
             const {error}=await dbClient.rpc('rename_discord_server',{p_server_id:id,p_name:clean});
             if(error){showToast('이름 수정 실패: '+error.message);return;}await loadDiscordServers(activeServerId);showToast('서버 이름을 수정했습니다.');
         }
-        async function editServerProfile(serverId=activeServerId){
-            const target=discordServers.find(x=>x.id===serverId); if(!target)return;
-            const canManage=globalAdmin||(currentUser&&target.owner_id===currentUser.id)||target.my_role==='admin'||target.my_role==='owner';
-            if(!canManage){showToast('서버 관리자만 설정할 수 있습니다.');return;}
-            const name=prompt('서버 이름 (1~60자)',target.name); if(name===null)return;
-            const image=prompt('서버 프로필 이미지 URL (비우면 기본 이미지)',target.profile_image_url||''); if(image===null)return;
-            const pub=confirm('이 서버를 누구나 열람할 수 있게 할까요?\n확인: 공개 / 취소: 비공개(열람 비밀번호 필요)');
-            let viewPw=''; if(!pub){viewPw=prompt('열람 비밀번호를 설정하세요. (8자 이상)');if(!viewPw||viewPw.length<8){showToast('열람 비밀번호는 8자 이상이어야 합니다.');return;}}
-            const {error}=await dbClient.rpc('update_discord_server_profile',{p_server_id:serverId,p_name:name.trim(),p_image_url:image.trim(),p_is_public:pub,p_view_password:viewPw});
-            if(error){showToast('프로필 설정 실패: '+error.message);return;}
-            showToast('서버 프로필 및 열람 설정을 저장했습니다.');await loadDiscordServers(serverId);
-        }
-        async function manageServerMembers(id){
-            const target=discordServers.find(x=>x.id===id);if(!target)return;
-            const {data,error}=await dbClient.rpc('list_server_members',{p_server_id:id});
-            if(error){showToast('참여자 목록을 불러오지 못했습니다: '+error.message);return;}
-            const lines=(data||[]).map(m=>`${m.nickname||m.email||m.user_id} — ${m.role}`).join('\n')||'참여자가 없습니다.';
-            const action=prompt('참여자 목록\n'+lines+'\n\n관리 명령: kick 또는 promote'); if(!action)return; if(!['kick','promote'].includes(action.trim().toLowerCase())){showToast('kick 또는 promote를 입력해 주세요.');return;}
-            const who=prompt('대상 회원의 닉네임 또는 user_id를 입력하세요.');if(!who)return;
-            const member=(data||[]).find(m=>m.user_id===who||m.nickname===who||m.email===who);if(!member){showToast('대상 회원을 찾지 못했습니다.');return;}
-            const rpc=action.toLowerCase()==='kick'?'kick_server_member':'promote_server_member';
-            const {error:e}=await dbClient.rpc(rpc,{p_server_id:id,p_user_id:member.user_id});
-            if(e){showToast('회원 관리 실패: '+e.message);return;}showToast('회원 권한을 변경했습니다.');await loadDiscordServers(id);
+        async function editServerProfile(){
+            if(!globalAdmin||!activeServerId){showToast('전체 관리자 로그인 후 서버를 선택해 주세요.');return;}
+            const current=discordServers.find(x=>x.id===activeServerId);if(!current)return;
+            const name=prompt('서버 프로필 이름을 수정하세요. (1~60자)',current.name);if(name===null)return;
+            const clean=name.trim();if(!clean||clean.length>60){showToast('서버 이름은 1~60자로 입력해 주세요.');return;}
+            const {error}=await dbClient.rpc('rename_discord_server',{p_server_id:activeServerId,p_name:clean});
+            if(error){showToast('서버 이름 수정 실패: '+error.message);return;}
+            showToast('서버 프로필 이름을 수정했습니다.');await loadDiscordServers(activeServerId);
         }
         async function deleteDiscordServer(id){
             if(!globalAdmin){showToast('전체 관리자만 서버를 삭제할 수 있습니다.');return;}
@@ -955,23 +892,19 @@
             showToast('서버를 삭제했습니다.');await loadDiscordServers();
         }
         async function createDiscordServer(){
-            if(!currentUser){showToast('서버 생성은 Discord 로그인 후 가능합니다.');openAdminModal();return;}
-            if(discordServers.some(x=>x.owner_id===currentUser.id)){showToast('계정당 서버는 1개만 생성할 수 있습니다.');return;}
-            const name=prompt('새 서버 이름을 입력하세요.');if(!name)return;
-            const adminPw=prompt('서버 관리자 비밀번호를 설정하세요. (8자 이상)');if(!adminPw)return;
-            if(adminPw.length<8){showToast('관리자 비밀번호는 8자 이상이어야 합니다.');return;}
-            const isPublic=confirm('서버를 누구나 열람할 수 있게 할까요?\n확인: 공개 / 취소: 비공개');
-            let viewPw='';if(!isPublic){viewPw=prompt('서버 열람 비밀번호를 설정하세요. (8자 이상)');if(!viewPw||viewPw.length<8){showToast('열람 비밀번호는 8자 이상이어야 합니다.');return;}}
-            const {data,error}=await dbClient.rpc('create_discord_server',{p_name:name.trim(),p_password:adminPw,p_is_public:isPublic,p_view_password:viewPw});
+            if(!globalAdmin){showToast('사이트 관리자만 서버를 생성할 수 있습니다.');return;}
+            const name=prompt('새 디스코드 서버 이름을 입력하세요.');if(!name)return;
+            const pw=prompt('이 서버의 관리자 비밀번호를 설정하세요. (8자 이상)');if(!pw)return;
+            const {data,error}=await dbClient.rpc('create_discord_server',{p_name:name,p_password:pw});
             if(error){showToast('서버 생성 실패: '+error.message);return;}
-            showToast('새 서버가 생성되었습니다.');await loadDiscordServers(data);await switchDiscordServer(data);
+            showToast('새 서버가 생성되었습니다.');await loadDiscordServers(data);
         }
         async function changeDiscordServerPassword(){
             if(!serverAdmin||!activeServerId)return;
-            const oldPw=prompt('현재 서버 관리자 비밀번호를 입력하세요.');if(!oldPw)return;const next=prompt('새 서버 관리자 비밀번호를 입력하세요. (8자 이상)');if(!next)return;
+            const oldPw=activeServerPassword;const next=prompt('새 서버 비밀번호를 입력하세요. (8자 이상)');if(!next)return;
             const {error}=await dbClient.rpc('change_server_password',{p_server_id:activeServerId,p_old_password:oldPw,p_new_password:next});
             if(error){showToast('비밀번호 변경 실패: '+error.message);return;}
-            activeServerPassword='';showToast('서버 관리자 비밀번호가 변경되었습니다.');
+            activeServerPassword=next;showToast('서버 비밀번호가 변경되었습니다.');
         }
         function applyAppState(data){
             players=Array.isArray(data.players)?data.players:[];
@@ -1290,17 +1223,11 @@
         }
 
         let activeHistoryPlayerId = null;
-        let editingHistoryId = null;
-        function resetHistoryForm(){ editingHistoryId=null; ['history-date','history-opponent','history-acs'].forEach(id=>document.getElementById(id).value=''); document.getElementById('history-result').value='win'; document.getElementById('history-date').value=new Date().toISOString().slice(0,10); document.getElementById('history-submit-btn').textContent='전적 추가'; }
-        function editPlayerMatchHistory(historyId){
-          if(!isAdmin)return; const p=players.find(x=>String(x.id)===String(activeHistoryPlayerId)); const h=(p?.matchHistory||[]).find(x=>String(x.id)===String(historyId)); if(!h)return;
-          editingHistoryId=String(historyId); document.getElementById('history-date').value=h.date||''; document.getElementById('history-opponent').value=h.opponent||''; document.getElementById('history-result').value=h.result||'win'; document.getElementById('history-acs').value=h.acs??''; document.getElementById('history-submit-btn').textContent='수정 저장';
-        }
         function openHistoryModal(id){
           const p=players.find(x=>String(x.id)===String(id));if(!p)return;activeHistoryPlayerId=p.id;
           document.getElementById('history-title').textContent=`${p.name} 선수 경기 전적`;
           document.getElementById('history-admin-form').classList.toggle('hidden',!isAdmin);
-          resetHistoryForm();
+          document.getElementById('history-date').value=new Date().toISOString().slice(0,10);
           renderPlayerHistory();const m=document.getElementById('history-modal');m.classList.remove('hidden');m.classList.add('flex');
         }
         function closeHistoryModal(){const m=document.getElementById('history-modal');m.classList.add('hidden');m.classList.remove('flex');activeHistoryPlayerId=null;}
@@ -1309,20 +1236,17 @@
           const wins=h.filter(x=>x.result==='win').length,losses=h.filter(x=>x.result==='loss').length,avg=h.length?h.reduce((a,x)=>a+Math.max(0,Number(x.acs)||0),0)/h.length:null;
           document.getElementById('history-summary').innerHTML=[['기록 경기',h.length+'경기'],['승리',wins+'승'],['패배',losses+'패'],['경기 ACS 평균',avg===null?'NAN':avg.toFixed(1)]].map(([a,b])=>`<div class="rounded-lg bg-gray-950 border border-gray-800 p-3"><div class="text-xs text-gray-500">${a}</div><div class="text-lg font-black text-white mt-1">${b}</div></div>`).join('');
           const list=document.getElementById('history-list');if(!h.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-8">등록된 경기 전적이 없습니다.</p>';return;}
-          list.innerHTML=[...h].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3"><div><div class="text-sm font-bold text-white">${escapeHtml(x.opponent||'경기')} <span class="ml-2 text-xs ${x.result==='win'?'text-green-400':'text-red-400'}">${x.result==='win'?'승리':'패배'}</span></div><div class="text-xs text-gray-500 mt-1">${escapeHtml(x.date||'날짜 미상')}</div></div><div class="text-sm text-valCyan font-bold">ACS ${Number(x.acs||0).toFixed(1)}</div>${isAdmin?`<div class="flex gap-3"><button type="button" onclick="editPlayerMatchHistory('${x.id}')" class="text-xs text-valCyan hover:text-cyan-200">수정</button><button type="button" onclick="deletePlayerMatchHistory('${x.id}')" class="text-xs text-red-400 hover:text-red-300">삭제</button></div>`:''}</div>`).join('');
+          list.innerHTML=[...h].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>`<div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950 p-3"><div><div class="text-sm font-bold text-white">${escapeHtml(x.opponent||'경기')} <span class="ml-2 text-xs ${x.result==='win'?'text-green-400':'text-red-400'}">${x.result==='win'?'승리':'패배'}</span></div><div class="text-xs text-gray-500 mt-1">${escapeHtml(x.date||'날짜 미상')}</div></div><div class="text-sm text-valCyan font-bold">ACS ${Number(x.acs||0).toFixed(1)}</div>${isAdmin?`<button type="button" onclick="deletePlayerMatchHistory('${x.id}')" class="text-xs text-red-400 hover:text-red-300">삭제</button>`:''}</div>`).join('');
         }
-        async function savePlayerMatchHistory(){
-          if(!isAdmin){showToast('전적 편집은 서버 관리자만 가능합니다.');return;}const p=players.find(x=>String(x.id)===String(activeHistoryPlayerId));if(!p)return;
+        async function addPlayerMatchHistory(){
+          if(!isAdmin){showToast('전적 추가는 서버 관리자만 가능합니다.');return;}const p=players.find(x=>String(x.id)===String(activeHistoryPlayerId));if(!p)return;
           const date=document.getElementById('history-date').value,opponent=document.getElementById('history-opponent').value.trim(),result=document.getElementById('history-result').value,acs=Number(document.getElementById('history-acs').value);
-          if(!date||document.getElementById('history-acs').value===''||!Number.isFinite(acs)||acs<0){showToast('경기 날짜와 유효한 ACS를 입력해 주세요.');return;}
-          p.matchHistory=Array.isArray(p.matchHistory)?p.matchHistory:[];
-          if(editingHistoryId){const i=p.matchHistory.findIndex(x=>String(x.id)===editingHistoryId);if(i<0)return;p.matchHistory[i]={...p.matchHistory[i],date,opponent,result,acs};}
-          else p.matchHistory.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),date,opponent,result,acs});
+          if(!date||!Number.isFinite(acs)||acs<0){showToast('경기 날짜와 유효한 ACS를 입력해 주세요.');return;}
+          p.matchHistory=Array.isArray(p.matchHistory)?p.matchHistory:[];p.matchHistory.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),date,opponent,result,acs});
           p.matches=p.matchHistory.length;p.wins=p.matchHistory.filter(x=>x.result==='win').length;p.losses=p.matchHistory.filter(x=>x.result==='loss').length;p.winRate=p.matches?p.wins/p.matches*100:50;p.avgAcs=p.matches?p.matchHistory.reduce((a,x)=>a+Number(x.acs||0),0)/p.matches:150;p.powerScore=calculatePowerScore(p.winRate,p.avgAcs,p.tier);
-          await persistState();renderAll();renderPlayerHistory();resetHistoryForm();showToast('전적을 저장하고 승률·ACS 평균을 갱신했습니다.');
+          document.getElementById('history-opponent').value='';document.getElementById('history-acs').value='';await persistState();renderAll();renderPlayerHistory();showToast('경기 전적을 추가하고 승률·ACS 평균을 갱신했습니다.');
         }
-        async function addPlayerMatchHistory(){ return savePlayerMatchHistory(); }
-        async function deletePlayerMatchHistory(historyId){if(!isAdmin)return;const p=players.find(x=>String(x.id)===String(activeHistoryPlayerId));if(!p)return;p.matchHistory=(p.matchHistory||[]).filter(x=>String(x.id)!==String(historyId));p.matches=p.matchHistory.length;p.wins=p.matchHistory.filter(x=>x.result==='win').length;p.losses=p.matchHistory.filter(x=>x.result==='loss').length;p.winRate=p.matches?p.wins/p.matches*100:50;p.avgAcs=p.matches?p.matchHistory.reduce((a,x)=>a+Number(x.acs||0),0)/p.matches:150;p.powerScore=calculatePowerScore(p.winRate,p.avgAcs,p.tier);await persistState();renderAll();renderPlayerHistory();resetHistoryForm();}
+        async function deletePlayerMatchHistory(historyId){if(!isAdmin)return;const p=players.find(x=>String(x.id)===String(activeHistoryPlayerId));if(!p)return;p.matchHistory=(p.matchHistory||[]).filter(x=>String(x.id)!==String(historyId));p.matches=p.matchHistory.length;p.wins=p.matchHistory.filter(x=>x.result==='win').length;p.losses=p.matchHistory.filter(x=>x.result==='loss').length;p.winRate=p.matches?p.wins/p.matches*100:50;p.avgAcs=p.matches?p.matchHistory.reduce((a,x)=>a+Number(x.acs||0),0)/p.matches:150;p.powerScore=calculatePowerScore(p.winRate,p.avgAcs,p.tier);await persistState();renderAll();renderPlayerHistory();}
 
         function toggleSelectPlayer(id) {
             const player = players.find(p => p.id === id);
